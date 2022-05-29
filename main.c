@@ -2,28 +2,25 @@
 #include <stdlib.h>
 
 #include "shell.h"
-#include "env.h"
 
 int main(int argc, char **argv)
 {
-    char *username = NULL;
-    int c;
-    int permissions;
-    SHELL_CONF *config;
+    SHELL_CONF *conf;
 
-    config = CreateShellConf();
-    if (config == NULL)
+    conf = NULL;
+
+    if (init_shell(&conf) != 0)
     {
-        perror("BSH : Memory error\n");
+        printf("BSH : Memory error !\n");
+        exit(-1);
     }
 
-    while (1)
+    while(1)
     {
-        permissions = get_owner_shell(&username);
-
-        readShellConf(config);
-        show_prompt(config, username, permissions);
-        c = getchar();
+        show_prompt(conf);
+        getchar();
     }
-    return 0;
+    
+    
+
 }

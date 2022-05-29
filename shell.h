@@ -6,10 +6,19 @@
 #include <assert.h>
 #include <string.h>
 
-typedef struct SHELL_CONF_t SHELL_CONF;
+#include "env.h"
 
+#define CONFIGFILE "bodashell.conf"
 
-SHELL_CONF *CreateShellConf(void);
+typedef struct SHELL_CONF_t
+{
+    int root_color;
+    int user_color;
+    ENV_t *env;
+
+}SHELL_CONF;
+
+int init_shell(SHELL_CONF **conf);
 short readShellConf(SHELL_CONF *config);
-void show_prompt(SHELL_CONF *config, char *username, int permissions);
+void show_prompt(SHELL_CONF *config);
 #endif

@@ -25,19 +25,22 @@ static const char *colorTypes[] = {
 };
 
 
-struct SHELL_CONF_t
+int init_shell(SHELL_CONF **conf)
 {
-    int root_color;
-    int user_color;
-
-};
-
-SHELL_CONF *CreateShellConf(void)
-{
-    SHELL_CONF *conf;
-    conf = (SHELL_CONF*)malloc(sizeof(SHELL_CONF));
+    *conf = (SHELL_CONF*)malloc(sizeof(SHELL_CONF));
+    if (*conf == NULL)
+        return 0;
     
-    return conf;
+    (*conf)->env = NULL;
+
+    if (get_owner_shell(&((*conf)->env)) != 0)
+        return -1;
+    
+    if (readShellConf(*conf) != 0)
+        return -1;
+    
+    return 0;
+    
 }
 
 
@@ -54,10 +57,10 @@ short readShellConf(SHELL_CONF *config)
     config->user_color = 2;
 
 
-    fp = fopen("bodashell.conf", "r");
+    fp = fopen(CONFIGFILE, "r");
     if (fp == NULL)
     {
-        fp = fopen("bodashell", "w");
+        fp = fopen(CONFIGFILE, "w");
         return -1;
     }
     else
@@ -126,19 +129,20 @@ short readShellConf(SHELL_CONF *config)
 
         }while (c != EOF);
     }
+    return 0;
 
 }
 
-void show_prompt(SHELL_CONF *config, char *username, int permissions)
+void show_prompt(SHELL_CONF *config)
 {
-    assert(config != NULL && username != NULL && permissions != -1);
+    assert(config != NULL && config->env != NULL && config->env->username != NULL && config->env->permissions >= 0);
 
-    if (permissions != 0)
+    if (config->env->permissions != 0)
         printf("%s", colorTypes[config->user_color]);
     else
         printf("%s", colorTypes[config->root_color]);
     
-    printf("%s #~", username);
+    printf("%s #~", config->env->username);
     printf("\033[0m");
 }
 

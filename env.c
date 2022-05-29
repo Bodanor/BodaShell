@@ -1,22 +1,29 @@
 #include "env.h"
 
-int get_owner_shell(char **username)
+int get_owner_shell(ENV_t **env)
 {
     struct passwd *pwd;
-    uid_t permissions;
 
-    permissions = getuid();
-    pwd = getpwuid(permissions);
+    if (*env != NULL)
+    {
+        free((*env)->username);
+        free(*env);
+    }   
 
-    if (*username != NULL)
-        free(*username);
+    *env = (ENV_t*)malloc(sizeof(ENV_t));
+    if (env == NULL)
+        return -1;
+    
+
+    (*env)->permissions = getuid();
+    pwd = getpwuid((*env)->permissions);
         
-    *username = (char*)malloc(sizeof(char) *strlen(pwd->pw_name) + 1);
-    if (*username == NULL)
+    (*env)->username = (char*)malloc(sizeof(char) *strlen(pwd->pw_name) + 1);
+    if ((*env)->username == NULL)
         return -1;
     else
     {
-        strcpy(*username, pwd->pw_name);
-        return permissions;
+        strcpy((*env)->username, pwd->pw_name);
+        return 0;
     }
 }
