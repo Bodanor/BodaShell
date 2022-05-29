@@ -9,6 +9,7 @@
 #include "env.h"
 
 #define CONFIGFILE "bodashell.conf"
+#define SHELL_INPUT_BUFFER 10
 
 static const char *colorName[] = {
     "black",
