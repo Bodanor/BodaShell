@@ -13,14 +13,14 @@ static const char *colorName[] = {
 };
 
 static const char *colorTypes[] = {
-    "\033[0;30m",   //Black
-    "\033[0;31m",   //Red
-    "\033[0;32m",   //Green
-    "\033[0;33m",   //Yellow
-    "\033[0;34m",   //Blue
-    "\033[0;35m",   //Purple
-    "\033[0;36m",   //Cyan
-    "\033[0;37m",   //White
+    "\033[1;30m",   //Black
+    "\033[1;31m",   //Red
+    "\033[1;32m",   //Green
+    "\033[1;33m",   //Yellow
+    "\033[1;34m",   //Blue
+    "\033[1;35m",   //Purple
+    "\033[1;36m",   //Cyan
+    "\033[1;37m",   //White
 
 };
 
@@ -76,7 +76,8 @@ short readShellConf(SHELL_CONF *config)
 
                     while ((c = fgetc(fp)) != '\n')
                     {
-                        buffer[i++] = c;
+                        if (i < 49)
+                            buffer[i++] = c;
                     }
                     buffer[i] = '\0';
 
@@ -96,7 +97,8 @@ short readShellConf(SHELL_CONF *config)
 
                     while ((c = fgetc(fp)) != '\n' && c != EOF)
                     {
-                        buffer[i++] = c;
+                        if (i < 49)
+                            buffer[i++] = c;
                     }
                     buffer[i] = '\0';
 

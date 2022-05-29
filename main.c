@@ -7,6 +7,7 @@
 int main(int argc, char **argv)
 {
     char *username = NULL;
+    int c;
     int permissions;
     SHELL_CONF *config;
 
@@ -16,10 +17,13 @@ int main(int argc, char **argv)
         perror("BSH : Memory error\n");
     }
 
-    permissions = get_owner_shell(&username);
+    while (1)
+    {
+        permissions = get_owner_shell(&username);
 
-    readShellConf(config);
-    show_prompt(config, username, permissions);
-
+        readShellConf(config);
+        show_prompt(config, username, permissions);
+        c = getchar();
+    }
     return 0;
 }

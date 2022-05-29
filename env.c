@@ -16,7 +16,7 @@ int get_owner_shell(char **username)
         return -1;
     else
     {
-        strcat(*username, pwd->pw_name);
+        strcpy(*username, pwd->pw_name);
         return permissions;
     }
 }
