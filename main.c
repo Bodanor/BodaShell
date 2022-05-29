@@ -11,7 +11,7 @@ int main(int argc, char **argv)
 
     if (init_shell(&conf) != 0)
     {
-        printf("BSH : Memory error !\n");
+        printf("BSH ERROR : Memory error !\n");
         exit(-1);
     }
 
