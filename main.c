@@ -11,7 +11,9 @@ int main(int argc, char **argv)
 
     if (init_shell(&conf) != 0)
     {
+        printf("%s", colorTypes[1]);
         printf("BSH ERROR : Memory error !\n");
+        printf("%s", colorTypes[sizeof(colorTypes) / 8 -1]);
         exit(-1);
     }
 

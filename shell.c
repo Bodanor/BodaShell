@@ -1,29 +1,5 @@
 #include "shell.h"
 
-static const char *colorName[] = {
-    "black",
-    "red",
-    "green",
-    "yellow",
-    "blue",
-    "purple",
-    "cyan",
-    "white",
-};
-
-static const char *colorTypes[] = {
-    "\033[1;30m",   //Black
-    "\033[1;31m",   //Red
-    "\033[1;32m",   //Green
-    "\033[1;33m",   //Yellow
-    "\033[1;34m",   //Blue
-    "\033[1;35m",   //Purple
-    "\033[1;36m",   //Cyan
-    "\033[1;37m",   //White
-    "\033[0m",      //RESET
-
-};
-
 static short parse_user_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static short parse_root_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 
