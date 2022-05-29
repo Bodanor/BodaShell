@@ -19,6 +19,7 @@ int main(int argc, char **argv)
     {
         show_prompt(conf);
         getchar();
+        readShellConf(conf);
     }
     
     

@@ -54,7 +54,12 @@ static short parse_user_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
 
     if (flag == 0)
     {
-        printf("BSH WARNING : Unknown value \"%s\" with parameter \"%s\" ! Defaulting to green\n", value_buffer, key_buffer);
+        if (conf->warning_flag == 0)
+        {
+            printf("%s", colorTypes[3]);
+            printf("BSH WARNING : Unknown value \"%s\" with parameter \"%s\" ! Defaulting to red\n", value_buffer, key_buffer);
+            printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
+        }
         return -1;
     }
     return 0;
@@ -87,7 +92,12 @@ static short parse_root_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
 
     if (flag == 0)
     {
-        printf("BSH WARNING : Unknown value \"%s\" with parameter \"%s\" ! Defaulting to red\n", value_buffer, key_buffer);
+        if (conf->warning_flag == 0)
+        {
+            printf("%s", colorTypes[3]);
+            printf("BSH WARNING : Unknown value \"%s\" with parameter \"%s\" ! Defaulting to red\n", value_buffer, key_buffer);
+            printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
+        }
         return -1;
     }
     return 0;
@@ -106,6 +116,7 @@ int init_shell(SHELL_CONF **conf)
     if (get_owner_shell(&((*conf)->env)) != 0)
         return -1;
     
+    (*conf)->warning_flag = 0;
     if (readShellConf(*conf) != 0)
         return -1;
     
@@ -158,9 +169,12 @@ short readShellConf(SHELL_CONF *config)
                 }
                 else
                 {
-                    printf("%s", colorTypes[3]);
-                    printf("BSH WARNING : Redefinition of parameter \"%s\"\n", key_buffer);
-                    printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
+                    if (config->warning_flag == 0)
+                    {
+                        printf("%s", colorTypes[3]);
+                        printf("BSH WARNING : Redefinition of parameter \"%s\"\n", key_buffer);
+                        printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
+                    }
                     i = 0;
                 }
 
@@ -172,6 +186,7 @@ short readShellConf(SHELL_CONF *config)
             }
         }
     }
+    config->warning_flag = 1;
 
     return 0;
 

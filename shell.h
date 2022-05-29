@@ -14,7 +14,9 @@ typedef struct SHELL_CONF_t
 {
     int root_color;
     int user_color;
+    short warning_flag;
     ENV_t *env;
+
 
 }SHELL_CONF;
 
