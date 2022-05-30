@@ -83,6 +83,8 @@ static short parse_root_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
 
 int init_shell(SHELL_CONF **conf)
 {
+    short status = 0;
+
     *conf = (SHELL_CONF*)malloc(sizeof(SHELL_CONF));
     if (*conf == NULL)
         return -1;
@@ -93,9 +95,21 @@ int init_shell(SHELL_CONF **conf)
         return -1;
     
     (*conf)->warning_flag = 0;  // Set the warning flag to zero to allow at least one time to warn user for config errors.
-    if (readShellConf(*conf) != 0)  // Read the config file.
-        return -1;
     
+    status = readShellConf(*conf);
+    if (status == -1)  // Read the config file.
+    {
+        printf("%s", colorTypes[3]);
+        printf("BSH WARNING : No config file found. Default has been created\n");
+        printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
+
+    }
+    else if (status == -2)
+    {
+        printf("%s", colorTypes[1]);
+        printf("BSH ERROR : Could not create a config file. Check your permissions !\n");
+        printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
+    }
     return 0;
     
 }
@@ -110,64 +124,82 @@ short readShellConf(SHELL_CONF *config)
     int i;
     char key_buffer[50];
 
-    int root_color_flag, user_color_flag;   // Flags to control if we have already processed some parameters and avoid overwritting them.
-    root_color_flag = user_color_flag = 0;  // We warn the user of redundancy in the config file.
+    // Flags to control if we have already processed some parameters and avoid overwritting them.
+    // We warn the user of redundancy in the config file.
+    int flags[3] = {0, 0};
 
     fp = fopen(CONFIGFILE, "r");
     if (fp == NULL)
     {
-        fp = fopen(CONFIGFILE, "w");
-        return -1;
-    }
-    else
-    {   
-        i = 0;
-        while ((c = fgetc(fp)) != EOF)
+        config->root_color = 1;
+        config->user_color = 2;
+
+        fp = fopen(CONFIGFILE, "wr");
+        if (fp == NULL)
+            return -2;
+        else
         {
-            if (c == '=')
+            fprintf(fp, "root_color=red\n");
+            fprintf(fp, "user_color=green");
+            fclose(fp);
+            return -1;
+        }
+    }
+    i = 0;
+    while ((c = fgetc(fp)) != EOF)
+    {
+        if (c == '#' || c == ';')   // Ignore commented lines in the config file.
+            while ((c = fgetc(fp)) != '\n' && c != EOF)
+                ;
+
+        else if (c == '=')
+        {
+            key_buffer[i] = '\0';
+
+            /*
+                * Check every possible parameters that are in the config file and process them 
+                * We also check every flag to see the config doesn't contains multiple times the same parameter
+                */
+        
+            if (flags[0] == 0)
             {
-                key_buffer[i] = '\0';
-
-                /*
-                 * Check avery possible parameters that are in the config file and process them 
-                 * We also check every flag to see the config doesn't contains multiple times the same parameter
-                 */
-
-                if (!user_color_flag && strcmp(key_buffer, "user_color") == 0)
+                if (strcmp(key_buffer, "user_color") == 0)
                 {
                     if (parse_user_color(config, fp, key_buffer) == -1)
                         config->user_color = 2;
 
-                    user_color_flag = 1;
+                    flags[1] = 1;
                     i = 0;
                 }
-                else if (!root_color_flag && strcmp(key_buffer, "root_color") == 0)
+                else if (strcmp(key_buffer, "root_color") == 0)
                 {
                     if (parse_root_color(config, fp, key_buffer) == -1)
                         config->user_color = 1;
-                    
-                    root_color_flag = 1;
+                
+                    flags[0] = 1;
                     i = 0;
                 }
-                else    // If we have already processed a specific parameter, we end up here and warn the user of the redundancy.
-                {
-                    if (config->warning_flag == 0)
-                    {
-                        printf("%s", colorTypes[3]);
-                        printf("BSH WARNING : Redefinition of parameter \"%s\"\n", key_buffer);
-                        printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
-                    }
-                    i = 0;
-                }
-
             }
-            else
+            else    // If we have already processed a specific parameter, we end up here and warn the user of the redundancy.
             {
-                if (i < 49)
-                    key_buffer[i++] = c;
+                if (config->warning_flag == 0)
+                {
+                    printf("%s", colorTypes[3]);
+                    printf("BSH WARNING : Redefinition of parameter \"%s\"\n", key_buffer);
+                    printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
+                }
+                while ((c = fgetc(fp)) != '\n' && c != EOF)
+                    ;
+                i = 0;
             }
         }
+        else
+        {
+            if (i < 49)
+                key_buffer[i++] = c;
+        }
     }
+
     config->warning_flag = 1;   // If user has already been warned, set this flag to disable warnings every time we read config file again.
     fclose(fp);
 
