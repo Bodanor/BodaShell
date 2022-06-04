@@ -8,6 +8,7 @@ int main(int argc, char **argv)
     SHELL_CONF *conf;
     int status;
     char *buffer;
+    char **args;
 
     conf = NULL;
     status = 1;
@@ -26,7 +27,8 @@ int main(int argc, char **argv)
         show_prompt(conf);
         buffer = readCommandInput();
         if (buffer != NULL){
-            /* */
+            args = splitCommandInput(buffer);
+            shell_launch(args);
         }
         readShellConf(conf);
     }

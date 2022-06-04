@@ -1,8 +1,20 @@
 #include "shell.h"
 
+static const char *colorName[] = {
+    "black",
+    "red",
+    "green",
+    "yellow",
+    "blue",
+    "purple",
+    "cyan",
+    "white",
+};
+
 static const char *possible_options[] = {
     "root_color",
     "user_color",
+    "display_path",
 };
 
 static short parse_user_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
@@ -23,8 +35,8 @@ static short parse_user_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
     }
 
     value_buffer[i] = 0;
-
-    for (i = 0; i < sizeof(colorName) / 8; i++)
+    size_t chris = sizeof(colorName) / 8;
+    for (i = 0; i < chris; i++)
     {
         if (strcmp(value_buffer, colorName[i]) == 0)
         {
@@ -262,7 +274,7 @@ char *readCommandInput(void)
     i = 0;
     step = 2;
 
-    buffer = (char*)malloc(sizeof(char)*SHELL_INPUT_BUFFER);    // First alocate some memory by the ma buffer size
+    buffer = (char*)malloc(sizeof(char)*SHELL_INPUT_BUFFER_SIZE);    // First alocate some memory by the ma buffer size
     if (buffer == NULL)
     {
         fprintf(stderr, "%s", colorTypes[1]);
@@ -275,9 +287,9 @@ char *readCommandInput(void)
 
     while((c = getchar()) != EOF && c != '\n')  // Get input char by char till user presses Enter
     {
-        if ((i + 1)% SHELL_INPUT_BUFFER == 0)   // if buffer is full, we reallocate it by step*buffer_size.
+        if ((i + 1)% SHELL_INPUT_BUFFER_SIZE == 0)   // if buffer is full, we reallocate it by step*buffer_size.
         {
-            buffer = (char*) realloc(buffer, sizeof(char*)*SHELL_INPUT_BUFFER *step);
+            buffer = (char*) realloc(buffer, sizeof(char*)*SHELL_INPUT_BUFFER_SIZE *step);
             if (buffer == NULL)
             {
                 fprintf(stderr, "%s", colorTypes[1]);
@@ -325,6 +337,79 @@ char *readCommandInput(void)
     }
 }
 
+char **splitCommandInput(char *commandInput)
+{
+    int position, step;
+    char **tokens = NULL;
+    char *token = NULL;
+
+    step = 2;
+    position = 0;
+    tokens = (char**) malloc(sizeof(char*)*SHELL_TOK_BUFFER_SIZE);
+    
+    if (tokens == NULL)
+    {
+        fprintf(stderr, "%s", colorTypes[1]);
+        fprintf(stderr, "BSH : Memory Error !\n");
+        fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+        return NULL;
+    }
+
+    token = strtok(commandInput, SHELL_TOK_DELIMITER);
+    while (token != NULL)
+    {
+        tokens[position] = token;
+        position++;
+
+        if ((position+ 1) % SHELL_TOK_BUFFER_SIZE == 0)
+        {
+            tokens = realloc(tokens, sizeof(char*)*SHELL_TOK_BUFFER_SIZE *step);
+            if (tokens == NULL)
+            {
+                fprintf(stderr, "%s", colorTypes[1]);
+                fprintf(stderr, "BSH : Memory Error !\n");
+                fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+                return NULL;
+            }
+        }
+        token = strtok(NULL, SHELL_TOK_DELIMITER);
+    }
+    tokens[position] = NULL;
+    return tokens;
+}
+
+int shell_launch(char **args)
+{
+    pid_t pid;
+    int status;
+
+    pid = fork();
+    if (pid == 0)
+    {
+        if (execvp(args[0], args) == -1)
+        {
+            fprintf(stderr, "%s", colorTypes[1]);
+            fprintf(stderr, "BSH : command not found !\n");
+            fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+        }
+        exit(EXIT_FAILURE);
+    }
+    else if (pid < 0)
+    {
+        fprintf(stderr, "%s", colorTypes[1]);
+        fprintf(stderr, "BSH : Fork error !\n");
+        fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+    }
+    else
+    {
+        do {
+            waitpid(pid, &status, WUNTRACED);
+        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+    }
+    return 1;
+
+
+}
 void free_shell(SHELL_CONF *conf)
 {
     assert(conf != NULL);

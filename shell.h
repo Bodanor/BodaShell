@@ -5,22 +5,16 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #include "env.h"
 
 #define CONFIGFILE "bodashell.conf"
-#define SHELL_INPUT_BUFFER 256
-
-static const char *colorName[] = {
-    "black",
-    "red",
-    "green",
-    "yellow",
-    "blue",
-    "purple",
-    "cyan",
-    "white",
-};
+#define SHELL_INPUT_BUFFER_SIZE 256
+#define SHELL_TOK_BUFFER_SIZE 256
+#define SHELL_TOK_DELIMITER " \t\r\n\a"
 
 static const char *colorTypes[] = {
     "\033[1;30m",   //Black
@@ -96,4 +90,7 @@ char *readCommandInput(void);
  * @post free all allocated memory
  */
 void free_shell(SHELL_CONF *conf);
+
+char **splitCommandInput(char *commandInput);
+int shell_launch(char **args);
 #endif
