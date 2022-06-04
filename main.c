@@ -30,7 +30,7 @@ int main(int argc, char **argv)
             args = splitCommandInput(buffer);
             shell_launch(args);
         }
-        readShellConf(conf);
+        status = readShellConf(conf);
     }
     free(buffer);
     free_shell(conf);

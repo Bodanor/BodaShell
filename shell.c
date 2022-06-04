@@ -15,11 +15,13 @@ static const char *possible_options[] = {
     "root_color",
     "user_color",
     "display_path",
+    "display_path_color",
 };
 
 static short parse_user_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static short parse_root_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
-
+static short parse_display_path(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
+static short parse_display_path_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 
 static short parse_user_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
 {
@@ -95,9 +97,84 @@ static short parse_root_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
     }
     return 0;
 
-};
+}
 
+static short parse_display_path(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
+{
+    char value_buffer[50];
+    int i = 0;
+    int c;
+    short flag = 0; // know if a valid value has been found for the "root_color" key.
 
+    while ((c = fgetc(fp)) != '\n' && c != EOF)
+    {
+        if (i < 49)
+            value_buffer[i++] = c;
+    }
+
+    value_buffer[i] = 0;
+
+    if (strcmp(value_buffer, "true") == 0)
+    {
+        conf->show_path = 1;
+        flag = 1;
+    }
+    else if (strcmp(value_buffer, "false") == 0)
+    {
+        conf->show_path = 0;
+        flag = 1;
+    }
+
+    if (flag == 0)  // If no value has been found then we warn the user that default settings are applied.
+    {
+        if (conf->warning_flag == 0)
+        {
+            printf("%s", colorTypes[3]);
+            printf("BSH WARNING : Unknown value \"%s\" with parameter \"%s\" ! Defaulting to red\n", value_buffer, key_buffer);
+            printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
+        }
+        return -1;
+    }
+    return 0;
+}
+static short parse_display_path_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
+{
+    
+    char value_buffer[50];
+    int i = 0;
+    int c;
+    short flag = 0; // know if a valid value has been found for the "root_color" key.
+
+    while ((c = fgetc(fp)) != '\n' && c != EOF)
+    {
+        if (i < 49)
+            value_buffer[i++] = c;
+    }
+
+    value_buffer[i] = 0;
+
+    for (i = 0; i < sizeof(colorName) / 8; i++)
+    {
+        if (strcmp(value_buffer, colorName[i]) == 0)
+        {
+            conf->path_color = i;
+            flag = 1;
+        }
+    }
+
+    if (flag == 0)  // If no value has been found then we warn the user that default settings are applied.
+    {
+        if (conf->warning_flag == 0)
+        {
+            printf("%s", colorTypes[3]);
+            printf("BSH WARNING : Unknown value \"%s\" with parameter \"%s\" ! Defaulting to red\n", value_buffer, key_buffer);
+            printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
+        }
+        return -1;
+    }
+    return 0;
+
+}
 int init_shell(SHELL_CONF **conf)
 {
     short status = 0;
@@ -153,6 +230,8 @@ short readShellConf(SHELL_CONF *config)
     {
         config->root_color = 1;
         config->user_color = 2;
+        config->show_path = 0;
+        config->path_color = 4;
 
         fp = fopen(CONFIGFILE, "wr");
         if (fp == NULL)
@@ -161,6 +240,8 @@ short readShellConf(SHELL_CONF *config)
         {
             fprintf(fp, "root_color=red\n");
             fprintf(fp, "user_color=green");
+            fprintf(fp, "display_path=false");
+            fprintf(fp, "display_path_color=blue");
             fclose(fp);
             return -1;
         }
@@ -188,7 +269,7 @@ short readShellConf(SHELL_CONF *config)
                 * We also check every flag to see the config doesn't contains multiple times the same parameter
                 */
             
-            for (i = 0, valid_key = 1; key_found != 1 && valid_key != 0 && i < (sizeof(flags) / 4) -2 ;i++)
+            for (i = 0, valid_key = 1; key_found != 1 && valid_key != 0 && i < (sizeof(possible_options)/8) ;i++)
             {
                 if (strcmp(possible_options[i], key_buffer) == 0)
                 {
@@ -220,7 +301,18 @@ short readShellConf(SHELL_CONF *config)
                         config->user_color = 1;
                 
                     flags[0] = 1;
+                }
+                else if (strcmp(key_buffer, "display_path") == 0)
+                {
+                    if (parse_display_path(config, fp, key_buffer) == -1)
+                        config->show_path = 0;
 
+                    flags[2] = 1;
+                }
+                else if (strcmp(key_buffer, "display_path_color") == 0)
+                {
+                    if (parse_display_path_color(config, fp, key_buffer) == -1)
+                        config->path_color = 4;
                 }
                 
             }
@@ -259,8 +351,16 @@ void show_prompt(SHELL_CONF *config)
     else
         printf("%s", colorTypes[config->root_color]);   // If user is root we set the proper color output
     
-    printf("%s ~$ ", config->env->username);
+    printf("%s", config->env->username);
+    if (config->show_path == 1)
+    {
+        putchar(':');
+        printf("%s", colorTypes[config->path_color]);
+        printf("%s", config->env->path);
+
+    }
     printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);   // Reset the color.
+    printf("~$ ");
 }
 
 

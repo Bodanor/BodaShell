@@ -12,6 +12,8 @@ typedef struct ENV_CONF_t
 {
     char *username;
     uid_t permissions;
+    char *path;
+    
 } ENV_t;
 
 /**

@@ -32,8 +32,10 @@ static const char *colorTypes[] = {
 
 typedef struct SHELL_CONF_t
 {
-    int root_color;
-    int user_color;
+    short root_color;
+    short user_color;
+    short path_color;
+    short show_path;
     short warning_flag;
     ENV_t *env;
 

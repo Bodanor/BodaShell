@@ -28,6 +28,14 @@ int get_owner_shell(ENV_t **env)
     else
     {
         strcpy((*env)->username, pwd->pw_name);
-        return 0;
     }
+    (*env)->path = (char*)malloc(sizeof(char)*strlen(pwd->pw_dir) + 1);
+    if ((*env)->path == NULL)
+        return -1;
+    else
+    {
+        strcpy((*env)->path, pwd->pw_dir);
+    }
+
+    return 0;
 }
