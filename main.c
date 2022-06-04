@@ -25,8 +25,10 @@ int main(int argc, char **argv)
 
         show_prompt(conf);
         buffer = readCommandInput();
-        if (buffer != NULL)
-            readShellConf(conf);
+        if (buffer != NULL){
+            /* */
+        }
+        readShellConf(conf);
     }
     free(buffer);
     free_shell(conf);

@@ -1,5 +1,10 @@
 #include "shell.h"
 
+static const char *possible_options[] = {
+    "root_color",
+    "user_color",
+};
+
 static short parse_user_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static short parse_root_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 
@@ -123,10 +128,13 @@ short readShellConf(SHELL_CONF *config)
     int c;
     int i;
     char key_buffer[50];
+    int key_found = 0;
+    int valid_key = 0;
+
 
     // Flags to control if we have already processed some parameters and avoid overwritting them.
     // We warn the user of redundancy in the config file.
-    int flags[3] = {0, 0};
+    int flags[4] = {0, 0, 0, 0};
 
     fp = fopen(CONFIGFILE, "r");
     if (fp == NULL)
@@ -152,6 +160,13 @@ short readShellConf(SHELL_CONF *config)
             while ((c = fgetc(fp)) != '\n' && c != EOF)
                 ;
 
+        if (i != 0 && c == '\n' && config->warning_flag == 0)
+        {
+            key_buffer[i] = '\0';
+            printf("%s", colorTypes[3]);
+            printf("BSH WARNING : Unknown parameter \"%s\"\n", key_buffer);
+            printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
+        }
         else if (c == '=')
         {
             key_buffer[i] = '\0';
@@ -160,8 +175,24 @@ short readShellConf(SHELL_CONF *config)
                 * Check every possible parameters that are in the config file and process them 
                 * We also check every flag to see the config doesn't contains multiple times the same parameter
                 */
-        
-            if (flags[0] == 0)
+            
+            for (i = 0, valid_key = 1; key_found != 1 && valid_key != 0 && i < (sizeof(flags) / 4) -2 ;i++)
+            {
+                if (strcmp(possible_options[i], key_buffer) == 0)
+                {
+                    key_found = 1;
+                    if (flags[i] == 1 && config->warning_flag == 0)
+                    {
+                        printf("%s", colorTypes[3]);
+                        printf("BSH WARNING : Redefinition of parameter \"%s\"\n", key_buffer);
+                        printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
+                        valid_key = 0;
+                    }
+                    else
+                        valid_key = 1;
+                }
+            }
+            if (key_found && valid_key)
             {
                 if (strcmp(key_buffer, "user_color") == 0)
                 {
@@ -169,7 +200,7 @@ short readShellConf(SHELL_CONF *config)
                         config->user_color = 2;
 
                     flags[1] = 1;
-                    i = 0;
+
                 }
                 else if (strcmp(key_buffer, "root_color") == 0)
                 {
@@ -177,21 +208,21 @@ short readShellConf(SHELL_CONF *config)
                         config->user_color = 1;
                 
                     flags[0] = 1;
-                    i = 0;
+
                 }
+                
             }
-            else    // If we have already processed a specific parameter, we end up here and warn the user of the redundancy.
+            else if (!key_found && config->warning_flag == 0)
             {
-                if (config->warning_flag == 0)
-                {
-                    printf("%s", colorTypes[3]);
-                    printf("BSH WARNING : Redefinition of parameter \"%s\"\n", key_buffer);
-                    printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
-                }
-                while ((c = fgetc(fp)) != '\n' && c != EOF)
-                    ;
-                i = 0;
+                printf("%s", colorTypes[3]);
+                printf("BSH WARNING : Unknown parameter \"%s\"\n", key_buffer);
+                printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
             }
+
+            i = 0;
+            key_found = 0;
+            valid_key = 0;
+
         }
         else
         {
