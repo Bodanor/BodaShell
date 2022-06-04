@@ -1,6 +1,6 @@
 #include "env.h"
 
-int get_owner_shell(ENV_t **env)
+int get_shell_owner(ENV_t **env)
 {
     /*
      * Don't need to free this below (pwd) as it is initilized by getpuid function using "static", so it's on the data segment not in the stack.
@@ -17,24 +17,22 @@ int get_owner_shell(ENV_t **env)
     *env = (ENV_t*)malloc(sizeof(ENV_t));
     if (env == NULL)
         return -1;
-    
 
     (*env)->permissions = getuid(); // Get the user UID.
     pwd = getpwuid((*env)->permissions);    // From the UID get informations from the specific user with this UID.
         
     (*env)->username = (char*)malloc(sizeof(char) *strlen(pwd->pw_name) + 1);
-    if ((*env)->username == NULL)
+    (*env)->home_dir_path = (char*)malloc(sizeof(char)*strlen(pwd->pw_dir) + 1);
+    (*env)->curr_path = (char*)malloc(sizeof(char)*strlen(pwd->pw_dir) + 1);
+
+    if ((*env)->username == NULL || (*env)->home_dir_path == NULL || (*env)->curr_path == NULL)
         return -1;
+    
     else
     {
         strcpy((*env)->username, pwd->pw_name);
-    }
-    (*env)->path = (char*)malloc(sizeof(char)*strlen(pwd->pw_dir) + 1);
-    if ((*env)->path == NULL)
-        return -1;
-    else
-    {
-        strcpy((*env)->path, pwd->pw_dir);
+        strcpy((*env)->home_dir_path, pwd->pw_dir);
+        strcpy((*env)->curr_path, pwd->pw_dir);
     }
 
     return 0;

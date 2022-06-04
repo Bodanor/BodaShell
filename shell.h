@@ -10,8 +10,9 @@
 #include <unistd.h>
 
 #include "env.h"
+#include "commands.h"
 
-#define CONFIGFILE "bodashell.conf"
+#define CONFIGFILE ".bodashell.conf"
 #define SHELL_INPUT_BUFFER_SIZE 256
 #define SHELL_TOK_BUFFER_SIZE 256
 #define SHELL_TOK_DELIMITER " \t\r\n\a"
@@ -95,4 +96,6 @@ void free_shell(SHELL_CONF *conf);
 
 char **splitCommandInput(char *commandInput);
 int shell_launch(char **args);
+int shell_execute(char **args, SHELL_CONF *config);
+
 #endif

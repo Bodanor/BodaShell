@@ -185,7 +185,7 @@ int init_shell(SHELL_CONF **conf)
     
     (*conf)->env = NULL;
 
-    if (get_owner_shell(&((*conf)->env)) != 0)  // Know who launched the shell and his permissions.
+    if (get_shell_owner(&((*conf)->env)) != 0)  // Know who launched the shell and his permissions.
         return -1;
     
     (*conf)->warning_flag = 0;  // Set the warning flag to zero to allow at least one time to warn user for config errors.
@@ -239,9 +239,9 @@ short readShellConf(SHELL_CONF *config)
         else
         {
             fprintf(fp, "root_color=red\n");
-            fprintf(fp, "user_color=green");
-            fprintf(fp, "display_path=false");
-            fprintf(fp, "display_path_color=blue");
+            fprintf(fp, "user_color=green\n");
+            fprintf(fp, "display_path=false\n");
+            fprintf(fp, "display_path_color=blue\n");
             fclose(fp);
             return -1;
         }
@@ -356,7 +356,7 @@ void show_prompt(SHELL_CONF *config)
     {
         putchar(':');
         printf("%s", colorTypes[config->path_color]);
-        printf("%s", config->env->path);
+        printf("%s", config->env->curr_path);
 
     }
     printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);   // Reset the color.
@@ -516,4 +516,18 @@ void free_shell(SHELL_CONF *conf)
     free(conf->env->username);
     free(conf->env);
     free(conf);
+}
+
+int shell_execute(char **args, SHELL_CONF *config)
+{
+    if (strcmp(args[0], "cd") == 0)
+    {
+        return(cd_command(args, &(config->env)));
+    }
+    else if (strcmp(args[0], "exit") == 0)
+    {
+        return(exit_command(args));
+    }
+    
+    return shell_launch(args);
 }

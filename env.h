@@ -12,7 +12,9 @@ typedef struct ENV_CONF_t
 {
     char *username;
     uid_t permissions;
-    char *path;
+    char *home_dir_path;
+    char *curr_path;
+    char *config_path;
     
 } ENV_t;
 
@@ -26,6 +28,6 @@ typedef struct ENV_CONF_t
  *         0 : Ff successfull
  *         -1: If memory error  
  */
-int get_owner_shell(ENV_t **env);
+int get_shell_owner(ENV_t **env);
 
 #endif

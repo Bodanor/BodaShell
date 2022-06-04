@@ -28,9 +28,9 @@ int main(int argc, char **argv)
         buffer = readCommandInput();
         if (buffer != NULL){
             args = splitCommandInput(buffer);
-            shell_launch(args);
+            status = shell_execute(args, conf);
         }
-        status = readShellConf(conf);
+        readShellConf(conf);
     }
     free(buffer);
     free_shell(conf);
