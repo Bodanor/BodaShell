@@ -22,8 +22,7 @@ static short parse_user_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static short parse_root_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static short parse_display_path(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static short parse_display_path_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
-int shell_launch_pipes(char **args_1, char **args_2);
-
+static char **getArgs(char **args);
 static short parse_user_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
 {
     char value_buffer[50];
@@ -447,16 +446,6 @@ char *readCommandInput(void)
     }
 }
 
-int check_for_piping(char **args)
-{
-    int i;
-    for (i = 0; args[i] != NULL; i++)
-    {
-        if (strcmp(args[i], "|") == 0)
-            return i;
-    }
-    return 0;
-}
 char **splitCommandInput(char *commandInput)
 {
     int position, step;
@@ -497,163 +486,105 @@ char **splitCommandInput(char *commandInput)
     tokens[position] = NULL;
     return tokens;
 }
-int shell_launch_pipes(char **args_1, char **args_2)
+
+static char **getArgs(char **args)
 {
+    char **args_tmp = NULL;
+    int i, args_count;
+    static char **curr_pos_each_call = NULL;
 
-    int pipefd[2]; 
-    pid_t p1, p2;
-    int status;
-  
-    if (pipe(pipefd) < 0)
+    if (args != NULL)
     {
-        fprintf(stderr, "%s", colorTypes[1]);
-        fprintf(stderr, "BSH : Pipe Error !\n");
-        fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
-        exit(EXIT_FAILURE);
-    }
-
-    p1 = fork();
-
-    if (p1 == 0)
-    {
-        // Child 1 executing..
-        // It only needs to write at the write end
-        close(pipefd[0]);
-        dup2(pipefd[1], STDOUT_FILENO);
-        close(pipefd[1]);
-  
-        if (execvp(args_1[0], args_1) < 0)
+        if (curr_pos_each_call == NULL)
+        curr_pos_each_call = args;
+        
+        args_count = 1;
+        for (i = 0; curr_pos_each_call[i] != NULL && strcmp(curr_pos_each_call[i], "|") != 0; i++)
         {
-            fprintf(stderr, "%s", colorTypes[1]);
-            fprintf(stderr, "BSH : %s : command not found !\n", args_1[0]);
-            fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+            args_tmp = realloc(args_tmp, sizeof(char*)*args_count);
+            args_tmp[i] = curr_pos_each_call[i];
         }
-        exit(EXIT_FAILURE);
-    }   
-  
-    else if (p1 < 0)
-    {
-        fprintf(stderr, "%s", colorTypes[1]);
-        fprintf(stderr, "BSH : Fork Error !\n");
-        fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+        args_tmp[i] = NULL;
+        if (curr_pos_each_call[i] != NULL)
+            i++;
+        curr_pos_each_call += i;
+
+        
+        return args_tmp;
     }
     else
-    {
-        // Parent executing
-        p2 = fork();
-  
-        if (p2 == 0)
-        {
-            close(pipefd[1]);
-            dup2(pipefd[0], STDIN_FILENO);
-            close(pipefd[0]);
-            if (execvp(args_2[0], args_2) < 0)
-            {
-                fprintf(stderr, "%s", colorTypes[1]);
-                fprintf(stderr, "BSH : %s : command not found !\n", args_2[0]);
-                fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
-            }
+        curr_pos_each_call = NULL;
 
-            exit(EXIT_FAILURE);
-        }
-  
-        // Child 2 executing..
-        // It only needs to read at the read end
-        if (p2 < 0)
-        {
-            fprintf(stderr, "%s", colorTypes[1]);
-            fprintf(stderr, "BSH : Fork error !\n");
-            fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
-        }
-        else
-        {
-            close(pipefd[0]);
-            close(pipefd[1]);
-            do {
-                waitpid(p1, &status, WUNTRACED);
-                waitpid(p2, &status, WUNTRACED);
-            } while (!WIFEXITED(status) && !WIFSIGNALED(status));
-        }
-    }
-    return 1;
 }
+
+int spawn_proc (int in, int out, char **arg)
+{
+  pid_t pid;
+
+  if ((pid = fork ()) == 0)
+    {
+      if (in != 0)
+        {
+          dup2 (in, 0);
+          close (in);
+        }
+
+      if (out != 1)
+        {
+          dup2 (out, 1);
+          close (out);
+        }
+
+      return execvp (arg[0], arg);
+    }
+
+  return pid;
+}
+
 int shell_launch(char **args)
 {
+    int   p[2];
     pid_t pid;
-    int status;
-    char **args_1, **args_2;
-    int i, j, flag, second_count;
-
-    flag = 1;
-    i = 0;
-    second_count = 0;
-
-    while (args[i] != NULL && (flag = strcmp(args[i], "|")) != 0)
+    int   fd_in = 0;
+    char **tmp = NULL;
+    int n = 0;
+    int i = 1;
+    int j = 0;
+    for (n = 0; args[n] != NULL ; n++)
     {
-        i++;
-    }
-    if (!flag)
-    {
-        args_1 = malloc(sizeof(char*)*i);
-        j = 0;
-        while (j < i)
-        {
-            args_1[j] = args[j];
-            j++;
-        }
-        args_1[j] = NULL;
-        i++;
-        j = 0;
-
-        while (args[i] != NULL)
-        {
+        if (strcmp(args[n], "|") == 0)
             i++;
-            j++;
-        }
-        args_2 = malloc(sizeof(char*)*j);
-        j++;
 
-        while (j < i)
-        {
-            args_2[second_count] = args[j];
-            second_count++;
-            j++;
-        }
-        args_2[second_count] = NULL;
-        shell_launch_pipes(args_1, args_2);
-        return 1;
     }
-    else
+    while (j < i)
     {
-        pid = fork();
-        if (pid == 0)
+        tmp = getArgs(args);
+
+        pipe(p);
+        if ((pid = fork()) == -1)
         {
-            if (execvp(args[0], args) == -1)
-            {
-                fprintf(stderr, "%s", colorTypes[1]);
-                fprintf(stderr, "BSH : command not found !\n");
-                fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
-            }
             exit(EXIT_FAILURE);
         }
-        else if (pid < 0)
+        else if (pid == 0)
         {
-            fprintf(stderr, "%s", colorTypes[1]);
-            fprintf(stderr, "BSH : Fork error !\n");
-            fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+            dup2(fd_in, 0); //change the input according to the old one 
+            if (j + 1!= i)
+                dup2(p[1], 1);
+            close(p[0]);
+            execvp(tmp[0], tmp);
+            printf("erreur");
+            exit(EXIT_FAILURE);
         }
         else
         {
-            do {
-                waitpid(pid, &status, WUNTRACED);
-            } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+            wait(NULL);
+            close(p[1]);
+            fd_in = p[0]; //save the input for the next command
+            j++;
         }
-        return 1;
     }
+    getArgs(NULL);
     return 1;
-
-
-
 
 }
 void free_shell(SHELL_CONF *conf)

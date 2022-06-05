@@ -97,5 +97,5 @@ void free_shell(SHELL_CONF *conf);
 char **splitCommandInput(char *commandInput);
 int shell_launch(char **args);
 int shell_execute(char **args, SHELL_CONF *config);
-int check_for_piping(char **args);
+
 #endif
