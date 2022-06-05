@@ -489,37 +489,65 @@ char **splitCommandInput(char *commandInput)
 }
 int shell_launch_pipes(char **args_1, char **args_2)
 {
-    int status;
-    int fds[2];
-    pipe(fds);
-    pid_t pid = fork();
-    if (pid < 0)
-    {
-        fprintf(stderr, "%s", colorTypes[1]);
-        fprintf(stderr, "BSH : Fork error !\n");
-        fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
-    } 
-    if (pid == 0)
-    {
-        if (execvp(args_2[0], args_2) == -1)
-        {
+
+    int pipefd[2]; 
+    pid_t p1, p2;
+  
+    if (pipe(pipefd) < 0) {
+        printf("\nPipe could not be initialized");
+        exit(EXIT_FAILURE);
+    }
+    p1 = fork();
+    if (p1 == 0) {
+        // Child 1 executing..
+        // It only needs to write at the write end
+        close(pipefd[0]);
+        dup2(pipefd[1], STDOUT_FILENO);
+        close(pipefd[1]);
+  
+        if (execvp(args_1[0], args_1) < 0) {
             fprintf(stderr, "%s", colorTypes[1]);
             fprintf(stderr, "BSH : command not found !\n");
             fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
         }
         exit(EXIT_FAILURE);
-    } else { // parent process
-        close(fds[0]);
-        dup2(fds[1], 1);
-        //close(fds[1]);
-        execvp(args_1[0], args_1); // run command BEFORE pipe character in userinput
-        do
-        {
-            waitpid(pid, &status, WUNTRACED);
-        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+    }   
+  
+    else if (p1 < 0) {
+        fprintf(stderr, "%s", colorTypes[1]);
+        fprintf(stderr, "BSH : Fork error !\n");
+        fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+    }
+    else {
+        // Parent executing
+        p2 = fork();
+  
+        if (p2 == 0) {
+            close(pipefd[1]);
+            dup2(pipefd[0], STDIN_FILENO);
+            close(pipefd[0]);
+            if (execvp(args_2[0], args_2) < 0) {
+                fprintf(stderr, "%s", colorTypes[1]);
+                fprintf(stderr, "BSH : command not found !\n");
+                fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+            }
+
+            exit(EXIT_FAILURE);
+        }
+  
+        // Child 2 executing..
+        // It only needs to read at the read end
+        if (p2 < 0) {
+            fprintf(stderr, "%s", colorTypes[1]);
+            fprintf(stderr, "BSH : Fork error !\n");
+            fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+        }
+        else {
+            return 1;
+        }
         return 1;
     }
-
+    return 1;
 }
 int shell_launch(char **args)
 {
