@@ -447,6 +447,16 @@ char *readCommandInput(void)
     }
 }
 
+int check_for_piping(char **args)
+{
+    int i;
+    for (i = 0; args[i] != NULL; i++)
+    {
+        if (strcmp(args[i], "|") == 0)
+            return i;
+    }
+    return 0;
+}
 char **splitCommandInput(char *commandInput)
 {
     int position, step;
