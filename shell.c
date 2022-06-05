@@ -22,6 +22,7 @@ static short parse_user_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static short parse_root_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static short parse_display_path(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static short parse_display_path_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
+int shell_launch_pipes(char **args_1, char **args_2);
 
 static short parse_user_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
 {
@@ -486,36 +487,116 @@ char **splitCommandInput(char *commandInput)
     tokens[position] = NULL;
     return tokens;
 }
-
-int shell_launch(char **args)
+int shell_launch_pipes(char **args_1, char **args_2)
 {
-    pid_t pid;
     int status;
-
-    pid = fork();
+    int fds[2];
+    pipe(fds);
+    pid_t pid = fork();
+    if (pid < 0)
+    {
+        fprintf(stderr, "%s", colorTypes[1]);
+        fprintf(stderr, "BSH : Fork error !\n");
+        fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+    } 
     if (pid == 0)
     {
-        if (execvp(args[0], args) == -1)
+        if (execvp(args_2[0], args_2) == -1)
         {
             fprintf(stderr, "%s", colorTypes[1]);
             fprintf(stderr, "BSH : command not found !\n");
             fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
         }
         exit(EXIT_FAILURE);
+    } else { // parent process
+        close(fds[0]);
+        dup2(fds[1], 1);
+        //close(fds[1]);
+        execvp(args_1[0], args_1); // run command BEFORE pipe character in userinput
+        do
+        {
+            waitpid(pid, &status, WUNTRACED);
+        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+        return 1;
     }
-    else if (pid < 0)
+
+}
+int shell_launch(char **args)
+{
+    pid_t pid;
+    int status;
+    char **args_1, **args_2;
+    int i, j, flag, second_count;
+
+    flag = 1;
+    i = 0;
+    second_count = 0;
+
+    while (args[i] != NULL && (flag = strcmp(args[i], "|")) != 0)
     {
-        fprintf(stderr, "%s", colorTypes[1]);
-        fprintf(stderr, "BSH : Fork error !\n");
-        fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+        i++;
+    }
+    if (!flag)
+    {
+        args_1 = malloc(sizeof(char*)*i);
+        j = 0;
+        while (j < i)
+        {
+            args_1[j] = args[j];
+            j++;
+        }
+        args_1[j] = NULL;
+        i++;
+        j = 0;
+
+        while (args[i] != NULL)
+        {
+            i++;
+            j++;
+        }
+        args_2 = malloc(sizeof(char*)*j);
+        j++;
+
+        while (j < i)
+        {
+            args_2[second_count] = args[j];
+            second_count++;
+            j++;
+        }
+        args_2[second_count] = NULL;
+        shell_launch_pipes(args_1, args_2);
+        return 1;
     }
     else
     {
-        do {
-            waitpid(pid, &status, WUNTRACED);
-        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+        pid = fork();
+        if (pid == 0)
+        {
+            if (execvp(args[0], args) == -1)
+            {
+                fprintf(stderr, "%s", colorTypes[1]);
+                fprintf(stderr, "BSH : command not found !\n");
+                fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+            }
+            exit(EXIT_FAILURE);
+        }
+        else if (pid < 0)
+        {
+            fprintf(stderr, "%s", colorTypes[1]);
+            fprintf(stderr, "BSH : Fork error !\n");
+            fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+        }
+        else
+        {
+            do {
+                waitpid(pid, &status, WUNTRACED);
+            } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+        }
+        return 1;
     }
     return 1;
+
+
 
 
 }
