@@ -515,7 +515,7 @@ int shell_launch_pipes(char **args_1, char **args_2)
         if (execvp(args_1[0], args_1) < 0)
         {
             fprintf(stderr, "%s", colorTypes[1]);
-            fprintf(stderr, "BSH : command not found !\n");
+            fprintf(stderr, "BSH : %s : command not found !\n", args_1[0]);
             fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
         }
         exit(EXIT_FAILURE);
@@ -540,7 +540,7 @@ int shell_launch_pipes(char **args_1, char **args_2)
             if (execvp(args_2[0], args_2) < 0)
             {
                 fprintf(stderr, "%s", colorTypes[1]);
-                fprintf(stderr, "BSH : command not found !\n");
+                fprintf(stderr, "BSH : %s : command not found !\n", args_2[0]);
                 fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
             }
 
