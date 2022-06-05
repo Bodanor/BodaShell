@@ -23,6 +23,7 @@ static short parse_root_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static short parse_display_path(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static short parse_display_path_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static char **getArgs(char **args);
+
 static short parse_user_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
 {
     char value_buffer[50];
@@ -509,36 +510,12 @@ static char **getArgs(char **args)
             i++;
         curr_pos_each_call += i;
 
-        
-        return args_tmp;
     }
     else
         curr_pos_each_call = NULL;
+    
+    return args_tmp;
 
-}
-
-int spawn_proc (int in, int out, char **arg)
-{
-  pid_t pid;
-
-  if ((pid = fork ()) == 0)
-    {
-      if (in != 0)
-        {
-          dup2 (in, 0);
-          close (in);
-        }
-
-      if (out != 1)
-        {
-          dup2 (out, 1);
-          close (out);
-        }
-
-      return execvp (arg[0], arg);
-    }
-
-  return pid;
 }
 
 int shell_launch(char **args)
@@ -560,10 +537,17 @@ int shell_launch(char **args)
     {
         tmp = getArgs(args);
 
-        pipe(p);
+        if (pipe(p) < 0)
+        {
+            fprintf(stderr, "%s", colorTypes[1]);
+            fprintf(stderr, "BSH : Pipe Error !\n");
+            fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+        }
         if ((pid = fork()) == -1)
         {
-            exit(EXIT_FAILURE);
+            fprintf(stderr, "%s", colorTypes[1]);
+            fprintf(stderr, "BSH : Fork Error !\n");
+            fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
         }
         else if (pid == 0)
         {
@@ -571,8 +555,12 @@ int shell_launch(char **args)
             if (j + 1!= i)
                 dup2(p[1], 1);
             close(p[0]);
-            execvp(tmp[0], tmp);
-            printf("erreur");
+            if(execvp(tmp[0], tmp) < 0)
+            {
+                fprintf(stderr, "%s", colorTypes[1]);
+                fprintf(stderr, "BSH : %s : command not found !\n", tmp[0]);
+                fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+            }
             exit(EXIT_FAILURE);
         }
         else
