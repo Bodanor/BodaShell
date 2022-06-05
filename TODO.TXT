@@ -2,3 +2,5 @@ Change flags when reading config file
 Instad of seeking for a '=' char, just load the whole line till we find '\n' and analyze what's before the '=' char. --> Better control
 
 random color for user and path
+
+optimize cd_command

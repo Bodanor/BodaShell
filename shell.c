@@ -188,6 +188,14 @@ int init_shell(SHELL_CONF **conf)
     if (get_shell_owner(&((*conf)->env)) != 0)  // Know who launched the shell and his permissions.
         return -1;
     
+    (*conf)->env->config_path = malloc(sizeof(char)*strlen(CONFIGFILE) + strlen((*conf)->env->home_dir_path) + 2);
+    if ((*conf)->env->config_path == NULL)
+        return -1;
+
+    strcpy((*conf)->env->config_path, (*conf)->env->home_dir_path);
+    strcat((*conf)->env->config_path, "/");
+    strcat((*conf)->env->config_path, CONFIGFILE);
+    
     (*conf)->warning_flag = 0;  // Set the warning flag to zero to allow at least one time to warn user for config errors.
     
     status = readShellConf(*conf);
@@ -225,7 +233,8 @@ short readShellConf(SHELL_CONF *config)
     // We warn the user of redundancy in the config file.
     int flags[4] = {0, 0, 0, 0};
 
-    fp = fopen(CONFIGFILE, "r");
+
+    fp = fopen(config->env->config_path, "r");
     if (fp == NULL)
     {
         config->root_color = 1;
@@ -233,7 +242,7 @@ short readShellConf(SHELL_CONF *config)
         config->show_path = 0;
         config->path_color = 4;
 
-        fp = fopen(CONFIGFILE, "wr");
+        fp = fopen(config->env->config_path, "wr");
         if (fp == NULL)
             return -2;
         else
