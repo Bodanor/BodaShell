@@ -491,29 +491,35 @@ char **splitCommandInput(char *commandInput)
 static char **getArgs(char **args)
 {
     char **args_tmp = NULL;
-    int i, args_count;
+    int i;
     static char **curr_pos_each_call = NULL;
 
     if (args != NULL)
     {
         if (curr_pos_each_call == NULL)
-        curr_pos_each_call = args;
-        
-        args_count = 1;
-        for (i = 0; curr_pos_each_call[i] != NULL && strcmp(curr_pos_each_call[i], "|") != 0; i++)
+            curr_pos_each_call = args;
+
+        for(i = 0; curr_pos_each_call[i] != NULL && strcmp(curr_pos_each_call[i], "|") != 0; i++)
         {
-            args_tmp = realloc(args_tmp, sizeof(char*)*args_count);
+            args_tmp = (char**)realloc(args_tmp, sizeof(char*)*(i + 2));
             args_tmp[i] = curr_pos_each_call[i];
         }
-        args_tmp[i] = NULL;
-        if (curr_pos_each_call[i] != NULL)
-            i++;
-        curr_pos_each_call += i;
+        
+        if (i != 0)
+        {
+            if (curr_pos_each_call[i] != NULL && strcmp(curr_pos_each_call[i], "|") == 0)
+                curr_pos_each_call += (i + 1);
+            else
+                curr_pos_each_call += i;
+            args_tmp[i] = NULL;
+        }
+        
 
     }
     else
+    {
         curr_pos_each_call = NULL;
-    
+    }
     return args_tmp;
 
 }
@@ -533,6 +539,7 @@ int shell_launch(char **args)
             i++;
 
     }
+    
     while (j < i)
     {
         tmp = getArgs(args);
@@ -571,7 +578,9 @@ int shell_launch(char **args)
             j++;
         }
     }
+
     getArgs(NULL);
+    free(args);
     return 1;
 
 }
