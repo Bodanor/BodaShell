@@ -52,7 +52,7 @@ typedef struct SHELL_CONF_t
  *          0 : If successfull
  *          -1 : If memory error
  */
-int init_shell(SHELL_CONF **conf);
+int init_shell(SHELL_CONF **conf, char **envp);
 
 /**
  * @brief Read the config file if does exist.

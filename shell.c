@@ -176,7 +176,7 @@ static short parse_display_path_color(SHELL_CONF *conf, FILE *fp, char key_buffe
     return 0;
 
 }
-int init_shell(SHELL_CONF **conf)
+int init_shell(SHELL_CONF **conf, char **envp)
 {
     short status = 0;
 
@@ -197,6 +197,11 @@ int init_shell(SHELL_CONF **conf)
     strcat((*conf)->env->config_path, "/");
     strcat((*conf)->env->config_path, CONFIGFILE);
     
+    (*conf)->env->envp = (char **)malloc(sizeof(char*));
+    if ((*conf)->env->envp == NULL)
+        return -1;
+    
+    (*conf)->env->envp = envp;
     (*conf)->warning_flag = 0;  // Set the warning flag to zero to allow at least one time to warn user for config errors.
     
     status = readShellConf(*conf);
@@ -601,6 +606,10 @@ int shell_execute(char **args, SHELL_CONF *config)
     else if (strcmp(args[0], "exit") == 0)
     {
         return(exit_command(args));
+    }
+    else if (strcmp(args[0], "show-env") == 0)
+    {
+        return(show_env_command(args, config->env));
     }
     
     return shell_launch(args);

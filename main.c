@@ -31,7 +31,7 @@ int main(int argc, char **argv, char **envp)
     sigaction(SIGINT, &sa, NULL);
     sigaction(SIGTERM, &sa, NULL);
 
-    if (init_shell(&conf) != 0)
+    if (init_shell(&conf, envp) != 0)
     {
         printf("%s", colorTypes[1]);
         printf("BSH ERROR : Memory error !\n");

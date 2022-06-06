@@ -9,6 +9,6 @@
 
 int cd_command(char **args, ENV_t **config);
 int exit_command(char **args);
-
+int show_env_command(char **args, ENV_t *env);
 
 #endif

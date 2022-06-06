@@ -15,6 +15,7 @@ typedef struct ENV_CONF_t
     char *home_dir_path;
     char *curr_path;
     char *config_path;
+    char **envp;
     
 } ENV_t;
 
