@@ -7,6 +7,7 @@ int get_shell_owner(ENV_t **env)
      * It reamins on the scope till the program lives
     */
     struct passwd *pwd;
+    char cwd[256];
 
     if (*env != NULL)
     {
@@ -23,7 +24,11 @@ int get_shell_owner(ENV_t **env)
         
     (*env)->username = (char*)malloc(sizeof(char) *strlen(pwd->pw_name) + 1);
     (*env)->home_dir_path = (char*)malloc(sizeof(char)*strlen(pwd->pw_dir) + 1);
-    (*env)->curr_path = (char*)malloc(sizeof(char)*strlen(pwd->pw_dir) + 1);
+    if(getcwd(cwd, sizeof(cwd)) == NULL)
+    {
+        return -1;
+    }
+    (*env)->curr_path = (char*)malloc(sizeof(char)*strlen(cwd) + 1);
 
     if ((*env)->username == NULL || (*env)->home_dir_path == NULL || (*env)->curr_path == NULL)
         return -1;
@@ -32,7 +37,7 @@ int get_shell_owner(ENV_t **env)
     {
         strcpy((*env)->username, pwd->pw_name);
         strcpy((*env)->home_dir_path, pwd->pw_dir);
-        strcpy((*env)->curr_path, pwd->pw_dir);
+        strcpy((*env)->curr_path, cwd);
     }
 
     return 0;

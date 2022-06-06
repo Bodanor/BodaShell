@@ -12,7 +12,7 @@ void ignore_sigint(int sig_num)
 	}
 	printf("\n");;
 }
-int main(int argc, char **argv)
+int main(int argc, char **argv, char **envp)
 {
     SHELL_CONF *conf;
     int status;

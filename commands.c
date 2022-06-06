@@ -33,7 +33,12 @@ int cd_command(char **args, ENV_t **config)
         printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
     }
     else
+    {
+        (*config)->curr_path = realloc((*config)->curr_path, sizeof(char) *strlen(cwd) + 1);
+        if ((*config)->curr_path == NULL)
+            return -1;
         strcpy((*config)->curr_path, cwd);
+    }
 
 
   return 1;
