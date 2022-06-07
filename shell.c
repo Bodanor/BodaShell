@@ -504,7 +504,7 @@ static char **getArgs(char **args)
         if (curr_pos_each_call == NULL)
             curr_pos_each_call = args;
 
-        for(i = 0; curr_pos_each_call[i] != NULL && strcmp(curr_pos_each_call[i], "|") != 0; i++)
+        for(i = 0; curr_pos_each_call[i] != NULL && strcmp(curr_pos_each_call[i], "|") != 0 && strcmp(curr_pos_each_call[i], "&") != 0; i++)
         {
             args_tmp = (char**)realloc(args_tmp, sizeof(char*)*(i + 2));
             args_tmp[i] = curr_pos_each_call[i];
@@ -512,7 +512,7 @@ static char **getArgs(char **args)
         
         if (i != 0)
         {
-            if (curr_pos_each_call[i] != NULL && strcmp(curr_pos_each_call[i], "|") == 0)
+            if (curr_pos_each_call[i] != NULL && (strcmp(curr_pos_each_call[i], "|") == 0 || strcmp(curr_pos_each_call[i], "&") == 0))
                 curr_pos_each_call += (i + 1);
             else
                 curr_pos_each_call += i;
@@ -538,64 +538,105 @@ int shell_launch(char **args)
     int n = 0;
     int i = 1;
     int j = 0;
-    
+    int y;
+    int flag = 0;
+    int index = 0;
+    int nb = 0;
+
     for (n = 0; args[n] != NULL ; n++)
     {
         if (strcmp(args[n], "|") == 0)
             i++;
+        if (strcmp(args[n], "&") == 0)
+        {
+            index = n;
+            flag = 1;
+            i++;
+        }
 
     }
     
     while (j < i)
     {
         tmp = getArgs(args);
+        nb = 0;
+        for (int a = 0; tmp[a] != NULL; a++)
+            nb++;
 
-        if (pipe(p) < 0)
-        {
-            fprintf(stderr, "%s", colorTypes[1]);
-            fprintf(stderr, "BSH : Pipe Error !\n");
-            fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
-        }
-        if ((pid = fork()) == -1)
-        {
-            fprintf(stderr, "%s", colorTypes[1]);
-            fprintf(stderr, "BSH : Fork Error !\n");
-            fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
-        }
-        else if (pid == 0)
-        {
-            dup2(fd_in, 0);         // fd_in result before pipe
-            close(fd_in);           // STDIN = fd_in
-            if (j + 1!= i)
-            {
-                dup2(p[1], 1);      // If we are last, thus last command atfer pipe --> STDOUT = pipe_write
-            }
-            close(p[1]);            // Closing pipe_write
-            close(p[0]);            // Closing pipe_read
 
-            if(execvp(tmp[0], tmp) < 0)
-            {
-                fprintf(stderr, "%s", colorTypes[1]);
-                fprintf(stderr, "BSH : %s : command not found !\n", tmp[0]);
-                fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
-            }
-            exit(EXIT_FAILURE);
+
+        if (flag && index >= nb)
+        {
+            pid = fork();
+                if( pid == 0)
+                {
+                    if(execvp(tmp[0], tmp) < 0)
+                    {
+                        fprintf(stderr, "%s", colorTypes[1]);
+                        fprintf(stderr, "BSH : %s : command not found !\n", tmp[0]);
+                        fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+                    }
+                    exit(EXIT_FAILURE);
+                }
+                else
+                {
+                    wait(NULL);
+                    j++;
+                    flag = 0;
+                }
+
+
         }
         else
         {
-            if (j + 1 == i)
-            {     
-                close(p[0]);
-                close(p[1]);
+            if (pipe(p) < 0)
+            {
+                fprintf(stderr, "%s", colorTypes[1]);
+                fprintf(stderr, "BSH : Pipe Error !\n");
+                fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+            }
+            if ((pid = fork()) == -1)
+            {
+                fprintf(stderr, "%s", colorTypes[1]);
+                fprintf(stderr, "BSH : Fork Error !\n");
+                fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+            }
+            else if (pid == 0)
+            {
+                dup2(fd_in, 0);         // fd_in result before pipe
+                close(fd_in);           // STDIN = fd_in
+                if (j + 1!= i)
+                {
+                    dup2(p[1], 1);      // If we are last, thus last command atfer pipe --> STDOUT = pipe_write
+                }
+                close(p[1]);            // Closing pipe_write
+                close(p[0]);            // Closing pipe_read
+
+                if(execvp(tmp[0], tmp) < 0)
+                {
+                    fprintf(stderr, "%s", colorTypes[1]);
+                    fprintf(stderr, "BSH : %s : command not found !\n", tmp[0]);
+                    fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+                }
+                exit(EXIT_FAILURE);
             }
             else
-                close(p[1]);
-                
-            wait(NULL);
+            {
+                if (j + 1 == i)
+                {     
+                    close(p[0]);
+                    close(p[1]);
+                }
+                else
+                    close(p[1]);
 
-            fd_in = p[0]; // Save the input for the next command
-            j++;
+                wait(NULL);
+
+                fd_in = p[0]; // Save the input for the next command
+                j++;
+            }
         }
+    
     }
 
     getArgs(NULL);
