@@ -538,7 +538,6 @@ int shell_launch(char **args)
     int n = 0;
     int i = 1;
     int j = 0;
-    int status;
     
     for (n = 0; args[n] != NULL ; n++)
     {
