@@ -6,6 +6,12 @@ shell: main.c env.c env.h shell.c shell.h commands.h
 
 install: shell
 	cp shell /usr/bin/
+
+install-vm:	shell
+	rm -rf /usr/bin/shell
+	cp shell /usr/bin/
+	chmod 755 /usr/bin/shell
+	
 clean:
 	rm -rf *.out
 	rm -f shell
