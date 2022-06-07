@@ -590,8 +590,8 @@ int shell_launch(char **args)
             }
             else
                 close(p[1]);
-            while (waitpid(-1, NULL, WNOHANG) > 0)
-                ;
+                
+            wait(NULL);
 
             fd_in = p[0]; // Save the input for the next command
             j++;
