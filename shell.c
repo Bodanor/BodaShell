@@ -538,6 +538,8 @@ int shell_launch(char **args)
     int n = 0;
     int i = 1;
     int j = 0;
+    int status;
+    
     for (n = 0; args[n] != NULL ; n++)
     {
         if (strcmp(args[n], "|") == 0)
@@ -563,10 +565,15 @@ int shell_launch(char **args)
         }
         else if (pid == 0)
         {
-            dup2(fd_in, 0); //change the input according to the old one 
+            dup2(fd_in, 0);         // fd_in result before pipe
+            close(fd_in);           // STDIN = fd_in
             if (j + 1!= i)
-                dup2(p[1], 1);
-            close(p[0]);
+            {
+                dup2(p[1], 1);      // If we are last, thus last command atfer pipe --> STDOUT = pipe_write
+            }
+            close(p[1]);            // Closing pipe_write
+            close(p[0]);            // Closing pipe_read
+
             if(execvp(tmp[0], tmp) < 0)
             {
                 fprintf(stderr, "%s", colorTypes[1]);
@@ -577,9 +584,17 @@ int shell_launch(char **args)
         }
         else
         {
-            wait(NULL);
-            close(p[1]);
-            fd_in = p[0]; //save the input for the next command
+            if (j + 1 == i)
+            {     
+                close(p[0]);
+                close(p[1]);
+            }
+            else
+                close(p[1]);
+            while ((pid = wait(&status)) != -1) /* pick up all the dead children*/
+                fprintf(stderr, "process %d exits with %d\n", pid, WEXITSTATUS(status));
+
+            fd_in = p[0]; // Save the input for the next command
             j++;
         }
     }
