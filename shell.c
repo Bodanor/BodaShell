@@ -591,8 +591,8 @@ int shell_launch(char **args)
             }
             else
                 close(p[1]);
-            while ((pid = wait(&status)) != -1) /* pick up all the dead children*/
-                fprintf(stderr, "process %d exits with %d\n", pid, WEXITSTATUS(status));
+            while (waitpid(-1, NULL, WNOHANG) > 0)
+                ;
 
             fd_in = p[0]; // Save the input for the next command
             j++;
