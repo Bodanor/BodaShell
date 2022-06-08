@@ -8,11 +8,14 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <termios.h>
 
 #include "env.h"
 #include "commands.h"
+#include "history.h"
 
 #define CONFIGFILE ".bodashell.conf"
+
 #define SHELL_INPUT_BUFFER_SIZE 256
 #define SHELL_TOK_BUFFER_SIZE 256
 #define SHELL_TOK_DELIMITER " \t\r\n\a"
@@ -41,6 +44,7 @@ typedef struct SHELL_CONF_t
     short hostname_color;
     short warning_flag;
     ENV_t *env;
+    SHELL_HISTORY *history;
 
 
 }SHELL_CONF;
@@ -85,7 +89,7 @@ void show_prompt(SHELL_CONF *config);
  *         NULL if unput is empty or a memory error occured
  *         char * to the user's command.
  */
-char *readCommandInput(void);
+char *readCommandInput(SHELL_CONF *conf);
 
 /**
  * @brief Free all the allocated memory to avoid memory leak

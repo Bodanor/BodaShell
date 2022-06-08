@@ -27,7 +27,31 @@ static short parse_path_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static short parse_display_hostname(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static short parse_hostname_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static char **getArgs(char **args);
+static int runSpecialKey(char key, SHELL_CONF *conf, SHELL_HISTORY *history);
 
+static int runSpecialKey(char key, SHELL_CONF *conf, SHELL_HISTORY *history)
+{
+    if (key == '\033')
+    {
+        getchar();
+        switch (getchar())
+        {
+        case 'A':
+            printf("UP");
+            break;
+        case 'B':
+            printf("DOWN");
+            break;
+        case 'C':
+            printf("RIGHT");
+            break;
+        case 'D':
+            printf("LEFT");
+            break;
+        }
+    }
+
+}
 static short parse_user_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
 {
     char value_buffer[50];
@@ -284,7 +308,17 @@ int init_shell(SHELL_CONF **conf, char **envp)
     
     (*conf)->env->envp = envp;
     (*conf)->warning_flag = 0;  // Set the warning flag to zero to allow at least one time to warn user for config errors.
+    // INIT HISTORY
+    // Vérifier output de init_history
     
+    if (init_history(&(*conf)->history, (*conf)->env->home_dir_path) == -1)
+    {
+        printf("%s", colorTypes[2]);
+        printf("BSH ERROR : HISTORY MEMORY ERROR\n");
+        printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
+    }
+
+    load_history((*conf)->history);
     status = readShellConf(*conf);
     if (status == -1)  // Read the config file.
     {
@@ -481,15 +515,22 @@ void show_prompt(SHELL_CONF *config)
 }
 
 
-char *readCommandInput(void)
+char *readCommandInput(SHELL_CONF *conf)
 {
-    int i, step, c;
+    int i, step, c, special_key_flag;
     char *buffer;
     char *buffer_pt;
+    struct termios oldterm, newterm;
 
     buffer = NULL;
     i = 0;
     step = 2;
+    special_key_flag = 0;
+
+    tcgetattr(STDIN_FILENO, &oldterm);
+    newterm = oldterm;
+    newterm.c_lflag &= ~( ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newterm);
 
     buffer = (char*)malloc(sizeof(char)*SHELL_INPUT_BUFFER_SIZE);    // First alocate some memory by the ma buffer size
     if (buffer == NULL)
@@ -504,6 +545,7 @@ char *readCommandInput(void)
 
     while((c = getchar()) != EOF && c != '\n')  // Get input char by char till user presses Enter
     {
+        
         if ((i + 1)% SHELL_INPUT_BUFFER_SIZE == 0)   // if buffer is full, we reallocate it by step*buffer_size.
         {
             buffer = (char*) realloc(buffer, sizeof(char*)*SHELL_INPUT_BUFFER_SIZE *step);
@@ -527,6 +569,8 @@ char *readCommandInput(void)
         buffer_pt[i++] = c;
 
     }
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldterm);
+    putchar('\n');
     if (i != 0) // We the input is not empty.
     {
         buffer_pt[i] = '\0';    // DON'T FORGET TO PUT A NULL CHAR AT THE END OF THE BUFFER !!
@@ -544,6 +588,15 @@ char *readCommandInput(void)
             fprintf(stderr, "BSH : Memory Error !\n");
             fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
             return NULL;
+        }
+        if(!special_key_flag)
+        {
+            if(save_command(buffer, conf->history) == -1)
+            {
+                printf("%s", colorTypes[3]);
+                printf("BSH WARNING : Could not command to history !\n");
+                printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
+            }   
         }
         return buffer;
     }

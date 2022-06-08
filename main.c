@@ -3,6 +3,7 @@
 #include <signal.h>
 
 #include "shell.h"
+#include "history.h"
 
 void ignore_sigint(int sig_num);
 
@@ -15,6 +16,7 @@ void ignore_sigint(int sig_num)
 int main(int argc, char **argv, char **envp)
 {
     SHELL_CONF *conf;
+
     int status;
     char *buffer;
     char **args;
@@ -43,12 +45,13 @@ int main(int argc, char **argv, char **envp)
     {
 
         show_prompt(conf);
-        buffer = readCommandInput();
+        buffer = readCommandInput(conf);
         if (buffer != NULL){
             args = splitCommandInput(buffer);
             status = shell_execute(args, conf);
         }
         readShellConf(conf);
+        load_history(conf->history);
     }
     free(buffer);
     free_shell(conf);
