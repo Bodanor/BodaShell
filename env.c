@@ -8,6 +8,7 @@ int get_shell_owner(ENV_t **env)
     */
     struct passwd *pwd;
     char cwd[256];
+    char hst[256];
 
     if (*env != NULL)
     {
@@ -30,6 +31,14 @@ int get_shell_owner(ENV_t **env)
     }
     (*env)->curr_path = (char*)malloc(sizeof(char)*strlen(cwd) + 1);
 
+    if (gethostname(hst, sizeof(hst)) == -1)
+    {
+        return -1;
+    }
+    (*env)->hostname = (char*)malloc(sizeof(char)*strlen(hst) + 1);
+
+    strcpy((*env)->hostname, hst);
+    
     if ((*env)->username == NULL || (*env)->home_dir_path == NULL || (*env)->curr_path == NULL)
         return -1;
     
