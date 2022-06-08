@@ -15,13 +15,17 @@ static const char *possible_options[] = {
     "root_color",
     "user_color",
     "display_path",
-    "display_path_color",
+    "path_color",
+    "display_hostname",
+    "hostname_color"
 };
 
 static short parse_user_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static short parse_root_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static short parse_display_path(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
-static short parse_display_path_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
+static short parse_path_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
+static short parse_display_hostname(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
+static short parse_hostname_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static char **getArgs(char **args);
 
 static short parse_user_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
@@ -131,14 +135,91 @@ static short parse_display_path(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
         if (conf->warning_flag == 0)
         {
             printf("%s", colorTypes[3]);
-            printf("BSH WARNING : Unknown value \"%s\" with parameter \"%s\" ! Defaulting to red\n", value_buffer, key_buffer);
+            printf("BSH WARNING : Unknown value \"%s\" with parameter \"%s\" ! Defaulting to blue\n", value_buffer, key_buffer);
             printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
         }
         return -1;
     }
     return 0;
 }
-static short parse_display_path_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
+static short parse_display_hostname(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
+{
+    char value_buffer[50];
+    int i = 0;
+    int c;
+    short flag = 0; // know if a valid value has been found for the "root_color" key.
+
+    while ((c = fgetc(fp)) != '\n' && c != EOF)
+    {
+        if (i < 49)
+            value_buffer[i++] = c;
+    }
+
+    value_buffer[i] = 0;
+
+    if (strcmp(value_buffer, "true") == 0)
+    {
+        conf->show_hostname = 1;
+        flag = 1;
+    }
+    else if (strcmp(value_buffer, "false") == 0)
+    {
+        conf->show_hostname = 0;
+        flag = 1;
+    }
+
+    if (flag == 0)  // If no value has been found then we warn the user that default settings are applied.
+    {
+        if (conf->warning_flag == 0)
+        {
+            printf("%s", colorTypes[3]);
+            printf("BSH WARNING : Unknown value \"%s\" with parameter \"%s\" ! Defaulting to green\n", value_buffer, key_buffer);
+            printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
+        }
+        return -1;
+    }
+    return 0;
+
+}
+static short parse_hostname_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
+{
+    char value_buffer[50];
+    int i = 0;
+    int c;
+    short flag = 0; // know if a valid value has been found for the "root_color" key.
+
+    while ((c = fgetc(fp)) != '\n' && c != EOF)
+    {
+        if (i < 49)
+            value_buffer[i++] = c;
+    }
+
+    value_buffer[i] = 0;
+
+    for (i = 0; i < sizeof(colorName) / 8; i++)
+    {
+        if (strcmp(value_buffer, colorName[i]) == 0)
+        {
+            conf->hostname_color = i;
+            flag = 1;
+        }
+    }
+
+    if (flag == 0)  // If no value has been found then we warn the user that default settings are applied.
+    {
+        if (conf->warning_flag == 0)
+        {
+            printf("%s", colorTypes[3]);
+            printf("BSH WARNING : Unknown value \"%s\" with parameter \"%s\" ! Defaulting to green\n", value_buffer, key_buffer);
+            printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
+        }
+        return -1;
+    }
+    return 0;
+
+
+}
+static short parse_path_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
 {
     
     char value_buffer[50];
@@ -237,7 +318,7 @@ short readShellConf(SHELL_CONF *config)
 
     // Flags to control if we have already processed some parameters and avoid overwritting them.
     // We warn the user of redundancy in the config file.
-    int flags[4] = {0, 0, 0, 0};
+    int flags[6] = {0, 0, 0, 0, 0, 0};
 
 
     fp = fopen(config->env->config_path, "r");
@@ -247,6 +328,8 @@ short readShellConf(SHELL_CONF *config)
         config->user_color = 2;
         config->show_path = 0;
         config->path_color = 4;
+        config->show_hostname = 0;
+        config->hostname_color = 2;
 
         fp = fopen(config->env->config_path, "wr");
         if (fp == NULL)
@@ -256,7 +339,9 @@ short readShellConf(SHELL_CONF *config)
             fprintf(fp, "root_color=red\n");
             fprintf(fp, "user_color=green\n");
             fprintf(fp, "display_path=false\n");
-            fprintf(fp, "display_path_color=blue\n");
+            fprintf(fp, "path_color=blue\n");
+            fprintf(fp, "display_hostname=false\n");
+            fprintf(fp, "hostname_color=green\n");
             fclose(fp);
             return -1;
         }
@@ -324,10 +409,20 @@ short readShellConf(SHELL_CONF *config)
 
                     flags[2] = 1;
                 }
-                else if (strcmp(key_buffer, "display_path_color") == 0)
+                else if (strcmp(key_buffer, "path_color") == 0)
                 {
-                    if (parse_display_path_color(config, fp, key_buffer) == -1)
+                    if (parse_path_color(config, fp, key_buffer) == -1)
                         config->path_color = 4;
+                }
+                else if (strcmp(key_buffer, "display_hostname") == 0)
+                {
+                    if(parse_display_hostname(config, fp, key_buffer) == -1)
+                        config->show_hostname = 0;
+                }
+                else if (strcmp(key_buffer, "hostname_color") == 0)
+                {
+                    if (parse_hostname_color(config, fp, key_buffer) == -1)
+                        config->hostname_color = 2;
                 }
                 
             }
@@ -367,7 +462,14 @@ void show_prompt(SHELL_CONF *config)
         printf("%s", colorTypes[config->root_color]);   // If user is root we set the proper color output
     
     printf("%s", config->env->username);
-    if (config->show_path == 1)
+    if (config->env->hostname != NULL && config->show_hostname == 1)
+    {
+        putchar('@');
+        printf("%s", colorTypes[config->hostname_color]);
+        printf("%s", config->env->hostname);
+
+    }
+    if (config->env->curr_path != NULL && config->show_path == 1)
     {
         putchar(':');
         printf("%s", colorTypes[config->path_color]);
@@ -585,6 +687,31 @@ int shell_launch(char **args)
                     flag = 0;
                 }
 
+<<<<<<< HEAD
+=======
+        if (pipe(p) < 0)
+        {
+            fprintf(stderr, "%s", colorTypes[1]);
+            fprintf(stderr, "BSH : Pipe Error !\n");
+            fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+        }
+        if ((pid = fork()) == -1)
+        {
+            fprintf(stderr, "%s", colorTypes[1]);
+            fprintf(stderr, "BSH : Fork Error !\n");
+            fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+        }
+        else if (pid == 0)
+        {
+            dup2(fd_in, 0);         // fd_in result before pipe
+            //close(fd_in);           // STDIN = fd_in
+            if (j + 1!= i)
+            {
+                dup2(p[1], 1);      // If we are last, thus last command atfer pipe --> STDOUT = pipe_write
+            }
+            close(p[1]);            // Closing pipe_write
+            close(p[0]);            // Closing pipe_read
+>>>>>>> master
 
         }
         else

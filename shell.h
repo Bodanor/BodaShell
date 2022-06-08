@@ -37,6 +37,8 @@ typedef struct SHELL_CONF_t
     short user_color;
     short path_color;
     short show_path;
+    short show_hostname;
+    short hostname_color;
     short warning_flag;
     ENV_t *env;
 
