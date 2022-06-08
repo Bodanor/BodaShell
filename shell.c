@@ -27,6 +27,25 @@ static short parse_path_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static short parse_display_hostname(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static short parse_hostname_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50]);
 static char **getArgs(char **args);
+static void get_cur_pos(int *x, int *y);
+static void remove_leftover_stdout(int nb_chars);
+
+static void remove_leftover_stdout(int nb_chars)
+{
+    int x;
+
+    for(x = nb_chars; x != 0; x--)
+        printf("\b \b");
+}
+static void get_cur_pos(int *x, int *y)
+{
+    printf("\033[6n");  /* This escape sequence !writes! the current
+                          coordinates to the terminal.
+                          We then have to read it from there, see [4,5].
+                          Needs <termios.h>,<unistd.h> and some others */
+   scanf("\033[%d;%dR", y, x);
+
+}
 static int runSpecialKey(char key, SHELL_CONF *conf, SHELL_HISTORY *history);
 
 static int runSpecialKey(char key, SHELL_CONF *conf, SHELL_HISTORY *history)
@@ -37,10 +56,12 @@ static int runSpecialKey(char key, SHELL_CONF *conf, SHELL_HISTORY *history)
         switch (getchar())
         {
         case 'A':
-            printf("UP");
+            browse_history_up(history);
+            return 1;
             break;
         case 'B':
-            printf("DOWN");
+            browse_history_down(history);
+            return 1;
             break;
         case 'C':
             printf("RIGHT");
@@ -50,6 +71,8 @@ static int runSpecialKey(char key, SHELL_CONF *conf, SHELL_HISTORY *history)
             break;
         }
     }
+
+    return 0;
 
 }
 static short parse_user_color(SHELL_CONF *conf, FILE *fp, char key_buffer[50])
@@ -291,6 +314,12 @@ int init_shell(SHELL_CONF **conf, char **envp)
     
     (*conf)->env = NULL;
 
+    tcgetattr(STDIN_FILENO, &(*conf)->oldterm);
+    (*conf)->newterm = (*conf)->oldterm;
+    (*conf)->newterm.c_lflag &= ~( ICANON | ECHO);
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &(*conf)->newterm);
+
     if (get_shell_owner(&((*conf)->env)) != 0)  // Know who launched the shell and his permissions.
         return -1;
     
@@ -517,94 +546,50 @@ void show_prompt(SHELL_CONF *config)
 
 char *readCommandInput(SHELL_CONF *conf)
 {
-    int i, step, c, special_key_flag;
-    char *buffer;
-    char *buffer_pt;
-    struct termios oldterm, newterm;
+    int c, arrow_flag;
+    size_t line_size;
+    char *new = NULL;
 
-    buffer = NULL;
-    i = 0;
-    step = 2;
-    special_key_flag = 0;
+    arrow_flag = 0;
+    get_cur_pos(&conf->coordinates.begin_line_x, &conf->coordinates.begin_line_y);    // Get beginning of line
+    conf->coordinates.curr_x = conf->coordinates.begin_line_x;
+    conf->coordinates.curr_y = conf->coordinates.begin_line_y;
 
-    tcgetattr(STDIN_FILENO, &oldterm);
-    newterm = oldterm;
-    newterm.c_lflag &= ~( ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &newterm);
-
-    buffer = (char*)malloc(sizeof(char)*SHELL_INPUT_BUFFER_SIZE);    // First alocate some memory by the ma buffer size
-    if (buffer == NULL)
+    conf->history->history_commands[conf->history->current_index] = (char*)malloc(sizeof(char)*SHELL_INPUT_BUFFER_SIZE);
+    if (conf->history->history_commands[conf->history->current_index] == NULL)
+        //ERROR HANDLING
+        ;
+    *conf->history->history_commands[conf->history->current_index] = '\0';
+    while ((c = getchar()) != '\n')
     {
-        fprintf(stderr, "%s", colorTypes[1]);
-        fprintf(stderr, "BSH : Memory Error !\n");
-        fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
-        return NULL;
-    }
-
-    buffer_pt = buffer;
-
-    while((c = getchar()) != EOF && c != '\n')  // Get input char by char till user presses Enter
-    {
-        
-        if ((i + 1)% SHELL_INPUT_BUFFER_SIZE == 0)   // if buffer is full, we reallocate it by step*buffer_size.
+        arrow_flag = runSpecialKey(c, conf, conf->history);
+        if (arrow_flag)     // If arrow keys are pressed, we handle them
+        {   
+            remove_leftover_stdout(conf->coordinates.curr_x- conf->coordinates.begin_line_x); // Remove leftover input from previous arrows
+            printf("%s", conf->history->history_commands[conf->history->current_index]);
+            get_cur_pos(&conf->coordinates.curr_x, &conf->coordinates.curr_y); // Update after printing 
+        }
+        else
         {
-            buffer = (char*) realloc(buffer, sizeof(char*)*SHELL_INPUT_BUFFER_SIZE *step);
-            if (buffer == NULL)
+            tcsetattr(STDIN_FILENO, TCSANOW, &conf->oldterm);
+            
+            line_size = strlen(conf->history->history_commands[conf->history->current_index]) + 1;
+            if ((line_size + 1) % SHELL_INPUT_BUFFER_SIZE == 0)
             {
-                fprintf(stderr, "%s", colorTypes[1]);
-                fprintf(stderr, "BSH : Memory Error !\n");
-                fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
-                return NULL;
+                new = realloc(conf->history->history_commands[conf->history->current_index], sizeof(char)*line_size);
+                conf->history->history_commands[conf->history->current_index] = new;
             }
 
-            /*
-            * avoid having buffer_pt pointing to the beginning of buffer.
-            * We continue where we left by pointing it at the end of buffer and continue to read the input
-            */
-
-            buffer_pt = buffer + (i *(step - 1));
-            step++; //increment the step for the next realloc
-            i = 0;
-        }
-        buffer_pt[i++] = c;
-
+            arrow_flag = 0;
+            conf->history->history_commands[conf->history->current_index][line_size - 1] = c;
+            conf->history->history_commands[conf->history->current_index][line_size++] = '\0';
+        } 
+        tcsetattr(STDIN_FILENO, TCSANOW, &conf->newterm);
     }
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldterm);
-    putchar('\n');
-    if (i != 0) // We the input is not empty.
-    {
-        buffer_pt[i] = '\0';    // DON'T FORGET TO PUT A NULL CHAR AT THE END OF THE BUFFER !!
 
-        /*
-         * Since we increment the buffer by step*buffer_size every time it is full , there may be some memory wasting.
-         * Readjust the whole buffer to the right size of input. Don't waste memory !
-         * Let's say input is 513 chars, buffer 512 and we reallocate 512 to buffer, we will waste 511 bytes !
-         */
+    tcsetattr(STDIN_FILENO, TCSANOW, &conf->oldterm);
+    return conf->history->history_commands[conf->history->current_index];
 
-        buffer = (char*)realloc(buffer, strlen(buffer) + 1);
-        if (buffer == NULL)
-        {
-            fprintf(stderr, "%s", colorTypes[1]);
-            fprintf(stderr, "BSH : Memory Error !\n");
-            fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
-            return NULL;
-        }
-        if(!special_key_flag)
-        {
-            if(save_command(buffer, conf->history) == -1)
-            {
-                printf("%s", colorTypes[3]);
-                printf("BSH WARNING : Could not command to history !\n");
-                printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
-            }   
-        }
-        return buffer;
-    }
-    else
-    {
-        free(buffer);   // If input is empty, free it for the next call.
-        return NULL;
-    }
 }
 
 char **splitCommandInput(char *commandInput)

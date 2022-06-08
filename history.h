@@ -14,6 +14,7 @@ typedef struct HISTORY_t
     FILE *hst_descriptor;
     char **history_commands;
     int history_lines;
+    int current_index;
     char *path;
 
 
@@ -22,5 +23,7 @@ typedef struct HISTORY_t
 int save_command(char *buffer, SHELL_HISTORY *history);
 int init_history(SHELL_HISTORY **history, char *home_dir_path);
 int load_history(SHELL_HISTORY *history);
+void browse_history_up(SHELL_HISTORY *history);
+void browse_history_down(SHELL_HISTORY *history);
 void free_history(SHELL_HISTORY *);
 #endif

@@ -43,6 +43,7 @@ int init_history(SHELL_HISTORY **history, char *home_dir_path)
 
     (*history)->history_commands = NULL;
     (*history)->history_lines = 0;
+    (*history)->current_index = 0;
 
     return 1;
 
@@ -121,11 +122,27 @@ int load_history(SHELL_HISTORY *history)
 
     if (history->history_lines != 0)
     {
-        history->history_commands = (char**)realloc(history->history_commands, sizeof(char*)*history->history_lines);
+        history->history_commands = (char**)realloc(history->history_commands, sizeof(char*)*history->history_lines + 1);
         if (history->history_commands == NULL)
             return -1;
+
+    
+        history->current_index = history->history_lines;
     }
 
     free(buffer);
     return 1;
+}
+
+void browse_history_up(SHELL_HISTORY *history)
+{
+    if (history->current_index != 0)
+        history->current_index--;
+
+
+}
+void browse_history_down(SHELL_HISTORY *history)
+{
+    if (history->current_index < history->history_lines )
+        history->current_index++;
 }

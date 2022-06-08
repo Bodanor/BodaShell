@@ -15,6 +15,7 @@
 #include "history.h"
 
 #define CONFIGFILE ".bodashell.conf"
+#define set_cur(x,y) printf("\033[%d;%dH", (y), (x))
 
 #define SHELL_INPUT_BUFFER_SIZE 256
 #define SHELL_TOK_BUFFER_SIZE 256
@@ -33,6 +34,14 @@ static const char *colorTypes[] = {
 
 };
 
+struct TERMCOORDINATES
+{   
+    int curr_x;
+    int curr_y;
+    int begin_line_x;
+    int begin_line_y;
+
+};
 
 typedef struct SHELL_CONF_t
 {
@@ -45,6 +54,8 @@ typedef struct SHELL_CONF_t
     short warning_flag;
     ENV_t *env;
     SHELL_HISTORY *history;
+    struct termios oldterm, newterm;
+    struct TERMCOORDINATES coordinates;
 
 
 }SHELL_CONF;
