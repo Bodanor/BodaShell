@@ -687,31 +687,6 @@ int shell_launch(char **args)
                     flag = 0;
                 }
 
-<<<<<<< HEAD
-=======
-        if (pipe(p) < 0)
-        {
-            fprintf(stderr, "%s", colorTypes[1]);
-            fprintf(stderr, "BSH : Pipe Error !\n");
-            fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
-        }
-        if ((pid = fork()) == -1)
-        {
-            fprintf(stderr, "%s", colorTypes[1]);
-            fprintf(stderr, "BSH : Fork Error !\n");
-            fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
-        }
-        else if (pid == 0)
-        {
-            dup2(fd_in, 0);         // fd_in result before pipe
-            //close(fd_in);           // STDIN = fd_in
-            if (j + 1!= i)
-            {
-                dup2(p[1], 1);      // If we are last, thus last command atfer pipe --> STDOUT = pipe_write
-            }
-            close(p[1]);            // Closing pipe_write
-            close(p[0]);            // Closing pipe_read
->>>>>>> master
 
         }
         else
