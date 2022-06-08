@@ -565,7 +565,7 @@ int shell_launch(char **args)
         else if (pid == 0)
         {
             dup2(fd_in, 0);         // fd_in result before pipe
-            close(fd_in);           // STDIN = fd_in
+            //close(fd_in);           // STDIN = fd_in
             if (j + 1!= i)
             {
                 dup2(p[1], 1);      // If we are last, thus last command atfer pipe --> STDOUT = pipe_write
