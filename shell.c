@@ -575,7 +575,6 @@ char *readCommandInput(SHELL_CONF *conf)
         }
         else
         {
-            tcsetattr(STDIN_FILENO, TCSANOW, &conf->oldterm);
             
             line_size = strlen(conf->history->history_commands[conf->history->current_index]) + 1;
             if ((line_size + 1) % SHELL_INPUT_BUFFER_SIZE == 0)
@@ -589,12 +588,9 @@ char *readCommandInput(SHELL_CONF *conf)
             conf->history->history_commands[conf->history->current_index][line_size++] = '\0';
             putchar(c);
         } 
-        tcsetattr(STDIN_FILENO, TCSANOW, &conf->newterm);
     }
 
     putchar('\n');
-
-    tcsetattr(STDIN_FILENO, TCSANOW, &conf->oldterm);
     if (*conf->history->history_commands[conf->history->current_index] != 0)
         return conf->history->history_commands[conf->history->current_index];
     else
