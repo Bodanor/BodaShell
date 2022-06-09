@@ -558,7 +558,6 @@ char *readCommandInput(SHELL_CONF *conf)
     conf->coordinates.curr_y = conf->coordinates.begin_line_y;
     
     conf->history->history_commands[conf->history->current_index] = (char*)malloc(sizeof(char)*SHELL_INPUT_BUFFER_SIZE);
-    
     if (conf->history->history_commands[conf->history->current_index] == NULL)
         //ERROR HANDLING
         ;
@@ -592,7 +591,14 @@ char *readCommandInput(SHELL_CONF *conf)
 
     putchar('\n');
     if (*conf->history->history_commands[conf->history->current_index] != 0)
-        return conf->history->history_commands[conf->history->current_index];
+    {
+        conf->history->local_history_total_lines++;
+        conf->history->history_commands = (char**)realloc(conf->history->history_commands, sizeof(char*)*(conf->history->local_history_total_lines + 1));
+        if (*conf->history->history_commands == NULL)
+            return NULL;
+        
+        return conf->history->history_commands[conf->history->current_index++];
+    }
     else
         return NULL;
 

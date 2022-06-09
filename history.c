@@ -7,20 +7,23 @@ static void free_loaded_history(SHELL_HISTORY *history)
 
     if (history->history_commands != NULL)
     {
-        for (i = 0;i < history->history_lines; i++)
+        for (i = 0;i < history->history_begin_total_lines; i++)
             free(history->history_commands[i]);
         free(history->history_commands);
     }
-    history->history_lines = 0;
+    history->history_begin_total_lines = 0;
 }
 
-int save_command(char *buffer, SHELL_HISTORY *history)
+int save_local_hisory(SHELL_HISTORY *history)
 {
+    int i;
+
     history->hst_descriptor = fopen(history->path, "a");
     if (history->hst_descriptor == NULL)
         return -1;
-
-    fprintf(history->hst_descriptor, "%s\n", buffer);
+    for(i = history->history_begin_total_lines; i < history->local_history_total_lines; i++)
+        fprintf(history->hst_descriptor, "%s\n", history->history_commands[i]);
+    
     fclose(history->hst_descriptor);
     return 1;
 
@@ -42,8 +45,9 @@ int init_history(SHELL_HISTORY **history, char *home_dir_path)
     strcat((*history)->path, HISTORYFILE);
 
     (*history)->history_commands = NULL;
-    (*history)->history_lines = 0;
+    (*history)->history_begin_total_lines = 0;
     (*history)->current_index = 0;
+    (*history)->local_history_total_lines = 0;
 
     return 1;
 
@@ -94,7 +98,7 @@ int load_history(SHELL_HISTORY *history)
             
             step = tmp_step;
 
-            if ((history->history_lines + 1) % HISTORY_BUFF_SIZE == 0)
+            if ((history->history_begin_total_lines + 1) % HISTORY_BUFF_SIZE == 0)
             {
                 history->history_commands = (char**)realloc(history->history_commands, sizeof(char**)*HISTORY_BUFF_SIZE *step);
                 if (history->history_commands == NULL)
@@ -102,14 +106,14 @@ int load_history(SHELL_HISTORY *history)
                 
                 step++;
             }
-            history->history_commands[history->history_lines] = malloc(sizeof(char)*strlen(buffer) + 1);
-            if (history->history_commands[history->history_lines] == NULL)
+            history->history_commands[history->history_begin_total_lines] = malloc(sizeof(char)*strlen(buffer) + 1);
+            if (history->history_commands[history->history_begin_total_lines] == NULL)
                 return -1;
-            strcpy(history->history_commands[history->history_lines], buffer);
+            strcpy(history->history_commands[history->history_begin_total_lines], buffer);
             buffer = realloc(buffer, sizeof(char)*HISTORY_BUFF_SIZE);
             buffer_pt = buffer;
             
-            history->history_lines++;
+            history->history_begin_total_lines++;
 
             tmp_step = step;
             step = 2;
@@ -120,14 +124,15 @@ int load_history(SHELL_HISTORY *history)
             buffer_pt[i++] = c;
     }
 
-    if (history->history_lines != 0)
+    if (history->history_begin_total_lines != 0)
     {
-        history->history_commands = (char**)realloc(history->history_commands, sizeof(char*)*(history->history_lines + 1));
+        history->history_commands = (char**)realloc(history->history_commands, sizeof(char*)*(history->history_begin_total_lines + 1));
         if (history->history_commands == NULL)
             return -1;
 
     
-        history->current_index = history->history_lines;
+        history->current_index = history->history_begin_total_lines;
+        history->local_history_total_lines = history->history_begin_total_lines;
     }
 
     free(buffer);
@@ -143,6 +148,6 @@ void browse_history_up(SHELL_HISTORY *history)
 }
 void browse_history_down(SHELL_HISTORY *history)
 {
-    if (history->current_index < history->history_lines )
+    if (history->current_index < history->local_history_total_lines)
         history->current_index++;
 }

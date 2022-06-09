@@ -13,14 +13,15 @@ typedef struct HISTORY_t
 {
     FILE *hst_descriptor;
     char **history_commands;
-    int history_lines;
+    int history_begin_total_lines;
+    int local_history_total_lines;
     int current_index;
     char *path;
 
 
 }SHELL_HISTORY;
 
-int save_command(char *buffer, SHELL_HISTORY *history);
+int save_local_hisory(SHELL_HISTORY *history);
 int init_history(SHELL_HISTORY **history, char *home_dir_path);
 int load_history(SHELL_HISTORY *history);
 void browse_history_up(SHELL_HISTORY *history);
