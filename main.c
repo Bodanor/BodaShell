@@ -50,8 +50,12 @@ int main(int argc, char **argv, char **envp)
             args = splitCommandInput(buffer);
             status = shell_execute(args, conf);
         }
+        if (!status)
+        {
+            save_local_hisory(conf->history);
+            tcsetattr(STDIN_FILENO, TCSANOW, &conf->oldterm);
+        }
         readShellConf(conf);
-        load_history(conf->history);
     }
     free(buffer);
     free_shell(conf);
