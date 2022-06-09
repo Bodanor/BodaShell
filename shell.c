@@ -550,16 +550,20 @@ char *readCommandInput(SHELL_CONF *conf)
     size_t line_size;
     char *new = NULL;
 
+    
+    line_size = 0;
     arrow_flag = 0;
     get_cur_pos(&conf->coordinates.begin_line_x, &conf->coordinates.begin_line_y);    // Get beginning of line
     conf->coordinates.curr_x = conf->coordinates.begin_line_x;
     conf->coordinates.curr_y = conf->coordinates.begin_line_y;
-
+    
     conf->history->history_commands[conf->history->current_index] = (char*)malloc(sizeof(char)*SHELL_INPUT_BUFFER_SIZE);
+    
     if (conf->history->history_commands[conf->history->current_index] == NULL)
         //ERROR HANDLING
         ;
     *conf->history->history_commands[conf->history->current_index] = '\0';
+
     while ((c = getchar()) != '\n')
     {
         arrow_flag = runSpecialKey(c, conf, conf->history);
@@ -583,12 +587,18 @@ char *readCommandInput(SHELL_CONF *conf)
             arrow_flag = 0;
             conf->history->history_commands[conf->history->current_index][line_size - 1] = c;
             conf->history->history_commands[conf->history->current_index][line_size++] = '\0';
+            putchar(c);
         } 
         tcsetattr(STDIN_FILENO, TCSANOW, &conf->newterm);
     }
 
+    putchar('\n');
+
     tcsetattr(STDIN_FILENO, TCSANOW, &conf->oldterm);
-    return conf->history->history_commands[conf->history->current_index];
+    if (*conf->history->history_commands[conf->history->current_index] != 0)
+        return conf->history->history_commands[conf->history->current_index];
+    else
+        return NULL;
 
 }
 

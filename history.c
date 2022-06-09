@@ -122,7 +122,7 @@ int load_history(SHELL_HISTORY *history)
 
     if (history->history_lines != 0)
     {
-        history->history_commands = (char**)realloc(history->history_commands, sizeof(char*)*history->history_lines + 1);
+        history->history_commands = (char**)realloc(history->history_commands, sizeof(char*)*(history->history_lines + 1));
         if (history->history_commands == NULL)
             return -1;
 
