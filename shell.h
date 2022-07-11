@@ -9,6 +9,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <termios.h>
+#include <ctype.h>
 
 #include "env.h"
 #include "commands.h"
@@ -20,6 +21,7 @@
 #define SHELL_INPUT_BUFFER_SIZE 256
 #define SHELL_TOK_BUFFER_SIZE 256
 #define SHELL_TOK_DELIMITER " \t\r\n\a"
+
 
 static const char *colorTypes[] = {
     "\033[1;30m",   //Black

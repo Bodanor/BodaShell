@@ -71,7 +71,7 @@ static int display_all_env_variables(ENV_t *env)
     if (env->envp == NULL)
     {
         printf("%s", colorTypes[1]);
-        printf("BSH ERROR : No environment varibale found !\n");
+        printf("BSH ERROR : No environment variable found !\n");
         printf("%s", colorTypes[sizeof(colorTypes) / 8 - 1]);
     }
     for (index = 0; env->envp[index]; index ++)

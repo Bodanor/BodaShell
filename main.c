@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
-
 #include "shell.h"
 #include "history.h"
 
@@ -11,7 +10,7 @@ void ignore_sigint(int sig_num)
 {
     while (waitpid(-1, NULL, WNOHANG) > 0) {
 	}
-	printf("\n");;
+    printf("^C");
 }
 int main(int argc, char **argv, char **envp)
 {
@@ -48,18 +47,21 @@ int main(int argc, char **argv, char **envp)
         buffer = readCommandInput(conf);
         if (buffer != NULL){
             args = splitCommandInput(buffer);
+            tcsetattr(STDIN_FILENO, TCSANOW, &conf->oldterm); // Restore before lauch
             status = shell_execute(args, conf);
         }
-        if (!status)
+        if (status)
         {
-            save_local_hisory(conf->history);
-            tcsetattr(STDIN_FILENO, TCSANOW, &conf->oldterm);
+            readShellConf(conf);
+            tcsetattr(STDIN_FILENO, TCSANOW, &conf->newterm);
         }
-        readShellConf(conf);
+
     }
+
+    save_local_hisory(conf->history);
+    tcsetattr(STDIN_FILENO, TCSANOW, &conf->oldterm);
+
     free(buffer);
     free_shell(conf);
     
-    
-
 }

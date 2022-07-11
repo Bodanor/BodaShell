@@ -38,12 +38,46 @@ static void remove_leftover_stdout(int nb_chars)
         printf("\b \b");
 }
 static void get_cur_pos(int *x, int *y)
-{
-    printf("\033[6n");  /* This escape sequence !writes! the current
-                          coordinates to the terminal.
-                          We then have to read it from there, see [4,5].
-                          Needs <termios.h>,<unistd.h> and some others */
+{   
+
+    /*
+    char c;
+    int i ;
+    int pow;
+    */
+    *x = *y = -1;
+    struct termios term, restore;
+    tcgetattr(0, &term);
+    tcgetattr(0, &restore);
+    term.c_lflag &= ~(ICANON|ECHO);
+    tcsetattr(0, TCSANOW, &term);
+
+    /*
+    write(1, "\033[6n", 4);
+
+    while (read(0, &c, 1) && c != '[')
+        ;
+    
+    pow = 1;
+    while (read(0, &c, 1) && c != ';')
+    {
+        *y = *y + (c - '0')*pow; 
+        pow *= 10;
+    }
+    i = 0;
+    
+    pow = 1;
+    while (read(0, &c, 1) && c != 'R')
+    {
+        *x = *x + (c - '0')*pow; 
+        pow *= 10;
+    }
+    */
+
+   printf("\033[6n");
    scanf("\033[%d;%dR", y, x);
+
+   tcsetattr(0, TCSANOW, &restore);
 
 }
 static int runSpecialKey(char key, SHELL_CONF *conf, SHELL_HISTORY *history);
@@ -315,8 +349,14 @@ int init_shell(SHELL_CONF **conf, char **envp)
     (*conf)->env = NULL;
 
     tcgetattr(STDIN_FILENO, &(*conf)->oldterm);
+
     (*conf)->newterm = (*conf)->oldterm;
-    (*conf)->newterm.c_lflag &= ~( ICANON | ECHO);
+    
+    (*conf)->newterm .c_lflag &= ~(ICANON | ISIG | ECHO);
+    (*conf)->newterm .c_iflag &= ~(IXON);
+    (*conf)->newterm .c_cc[VMIN] = 1;
+    (*conf)->newterm .c_cc[VTIME] = 0;
+
 
     tcsetattr(STDIN_FILENO, TCSANOW, &(*conf)->newterm);
 
@@ -564,17 +604,29 @@ char *readCommandInput(SHELL_CONF *conf)
     *conf->history->history_commands[conf->history->current_index] = '\0';
 
     while ((c = getchar()) != '\n')
-    {
+    {   
         arrow_flag = runSpecialKey(c, conf, conf->history);
         if (arrow_flag)     // If arrow keys are pressed, we handle them
         {   
             remove_leftover_stdout(conf->coordinates.curr_x- conf->coordinates.begin_line_x); // Remove leftover input from previous arrows
             printf("%s", conf->history->history_commands[conf->history->current_index]);
             get_cur_pos(&conf->coordinates.curr_x, &conf->coordinates.curr_y); // Update after printing 
+            line_size = strlen(conf->history->history_commands[conf->history->current_index]);
         }
-        else
+        else if (c == 127)  // Delete key
         {
+           
+            if (line_size != 0)
+            {
+                conf->history->history_commands[conf->history->current_index][--line_size] = '\0';
+                printf("\b \b");
+            }
+            else
+                printf("\a");   
             
+        }
+        else if (!iscntrl(c))
+        {
             line_size = strlen(conf->history->history_commands[conf->history->current_index]) + 1;
             if ((line_size + 1) % SHELL_INPUT_BUFFER_SIZE == 0)
             {
@@ -584,15 +636,16 @@ char *readCommandInput(SHELL_CONF *conf)
 
             arrow_flag = 0;
             conf->history->history_commands[conf->history->current_index][line_size - 1] = c;
-            conf->history->history_commands[conf->history->current_index][line_size++] = '\0';
+            conf->history->history_commands[conf->history->current_index][line_size] = '\0';
             putchar(c);
         } 
     }
 
     putchar('\n');
-    if (*conf->history->history_commands[conf->history->current_index] != 0)
+    if (*conf->history->history_commands[conf->history->current_index] != 0 && c != EOF)
     {
-        conf->history->local_history_total_lines++;
+        if (conf->history->current_index == conf->history->local_history_total_lines)
+            conf->history->local_history_total_lines++;
         conf->history->history_commands = (char**)realloc(conf->history->history_commands, sizeof(char*)*(conf->history->local_history_total_lines + 1));
         if (*conf->history->history_commands == NULL)
             return NULL;
@@ -609,6 +662,7 @@ char **splitCommandInput(char *commandInput)
     int position, step;
     char **tokens = NULL;
     char *token = NULL;
+    char *tmp;
 
     step = 2;
     position = 0;
@@ -622,7 +676,17 @@ char **splitCommandInput(char *commandInput)
         return NULL;
     }
 
-    token = strtok(commandInput, SHELL_TOK_DELIMITER);
+    tmp = malloc(strlen(commandInput) + 1);
+    if (tmp == NULL)
+    {
+        fprintf(stderr, "%s", colorTypes[1]);
+        fprintf(stderr, "BSH : Memory Error !\n");
+        fprintf(stderr, "%s", colorTypes[sizeof(colorTypes) / 8 -1]);
+        return NULL;
+    }
+    strcpy(tmp, commandInput);
+
+    token = strtok(tmp, SHELL_TOK_DELIMITER);
     while (token != NULL)
     {
         tokens[position] = token;
@@ -748,6 +812,7 @@ int shell_launch(char **args)
             fd_in = p[0]; // Save the input for the next command
             j++;
         }
+            
     }
 
     getArgs(NULL);
@@ -765,6 +830,7 @@ void free_shell(SHELL_CONF *conf)
 
 int shell_execute(char **args, SHELL_CONF *config)
 {
+
     if (strcmp(args[0], "cd") == 0)
     {
         return(cd_command(args, &(config->env)));
