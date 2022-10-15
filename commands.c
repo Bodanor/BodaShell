@@ -8,7 +8,7 @@
 static int check_special_key(char c, SHELL_HISTORY *history);
 static void remove_leftovers(int count);
 static void parse_history(SHELL_HISTORY *history, int x_begin, int y_begin);
-static int update_history (SHELL_HISTORY *history); 
+static void *update_history (SHELL_HISTORY *history); 
 
 static void parse_history(SHELL_HISTORY *history, int x_begin, int y_begin)
 {
@@ -56,24 +56,27 @@ char *readCommandInput(SHELL_HISTORY *history)
 {
     int i, step, c;
     int y_beginning, x_beginning;
-    char *buffer;
-    char *buffer_pt;
+
+    char *buffer_tmp;
 
     history->current_index = history->history_total_commands;
     get_cursor_pos(&x_beginning, &y_beginning);
     i = 0; 
     step = 2;
+ 
+    history->history_commands = (char **)realloc(history->history_commands, sizeof(char*) *(history->history_total_commands + 1));
+    if (history->history_commands == NULL){
+     perror("History error\n");
+     return NULL;
+    }
 
-    buffer = (char*)malloc(sizeof(char)*HISTORY_BUFF_SIZE);
-    if (buffer == NULL){
+    history->history_commands[history->history_total_commands] = (char*)malloc(sizeof(char)*HISTORY_BUFF_SIZE);
+    if (history->history_commands[history->history_total_commands] == NULL){
         printf("Memory Error");
         return NULL;
     }
 
-    buffer_pt = buffer;
-    *buffer_pt = '\0';
-    history->history_commands[history->history_total_commands] = buffer_pt;
-
+    *history->history_commands[history->history_total_commands] = '\0';
     while ((c = getchar()) != EOF && c != '\n' && c != '\r'){
 
         if (check_special_key(c, history))
@@ -83,18 +86,19 @@ char *readCommandInput(SHELL_HISTORY *history)
         else
         {
             if ((i + 1)%HISTORY_BUFF_SIZE == 0){
-                buffer = (char*)realloc(buffer, sizeof(char*)*HISTORY_BUFF_SIZE *step);
-                if (buffer == NULL){
+                buffer_tmp = (char*)realloc(history->history_commands[history->history_total_commands], sizeof(char*)*HISTORY_BUFF_SIZE *step);
+                if (history->history_commands[history->history_total_commands] == NULL){
                     printf("Memory Error");
                     return NULL;
                 }
-                buffer_pt = buffer+ (i*(step -1));
+
+                history->history_commands[history->history_total_commands] = buffer_tmp+ (i*(step -1));
                 step++;
                 i = 0;
             }
             else{
-                buffer_pt[i++] = c;
-                buffer_pt[i] = '\0';
+                history->history_commands[history->history_total_commands][i++] = c;
+                history->history_commands[history->history_total_commands][i] = '\0';
                 putchar(c);
             }
 
@@ -103,26 +107,33 @@ char *readCommandInput(SHELL_HISTORY *history)
 
 
     printf("\n\r");
+   
+    return update_history(history);
+}
+
+void *update_history(SHELL_HISTORY *history)
+{
+    char *buffer_tmp = history->history_commands[history->history_total_commands];
 
     if (history->current_index != history->history_total_commands){
-        buffer = realloc(buffer, sizeof(char) * (strlen(history->history_commands[history->current_index]) + 1));
-        if (buffer == NULL){
+        buffer_tmp = realloc(buffer_tmp, sizeof(char) * (strlen(history->history_commands[history->current_index]) + 1));
+
+        if (buffer_tmp == NULL){
             perror("ERREUR DE REALLOC\n");
             return NULL;
         }
-        strcpy(buffer, history->history_commands[history->current_index]);
+        strcpy(buffer_tmp, history->history_commands[history->current_index]);
+        history->history_commands[history->history_total_commands] = buffer_tmp;
+
     }
-    if (*buffer == '\0'){
-        free(buffer);
+    else if (*history->history_commands[history->history_total_commands] == '\0'){
+        free(history->history_commands[history->history_total_commands]);
         return NULL;
     }
-    else{
 
-        history->history_commands[history->history_total_commands] = buffer;
-        return history->history_commands[history->history_total_commands++];
-    }
+    return history->history_commands[history->history_total_commands];
+
 }
-
 
 
 char **splitCommandInput(char *command)
@@ -130,7 +141,11 @@ char **splitCommandInput(char *command)
     int position, step;
     char **tokens = NULL;
     char *token = NULL;
+    char *tmp_org_command = malloc(sizeof(char)*(strlen(command) + 1));
+    if (tmp_org_command == NULL)
+        return NULL;
 
+    strcpy(tmp_org_command, command);
     step = 2;
     position = 0;
     tokens = (char**) malloc(sizeof(char*)*INPUT_BUFFER_SIZE);
@@ -138,10 +153,11 @@ char **splitCommandInput(char *command)
     if (tokens == NULL)
     {
         printf("Error Malloc()\n");
+        free(tmp_org_command);
         return NULL;
     }
 
-    token = strtok(command, TOK_DELIMITER);
+    token = strtok(tmp_org_command, TOK_DELIMITER);
     while (token != NULL)
     {
         tokens[position] = token;
@@ -153,6 +169,7 @@ char **splitCommandInput(char *command)
             if (tokens == NULL)
             {
                 printf("Error Alloc()\n");
+                free(tmp_org_command);
                 return NULL;
             }
         }
