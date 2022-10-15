@@ -36,6 +36,7 @@ int main(){
         if (command != NULL){
             full_command = splitCommandInput(command);
             status = shell_execute(full_command, env);
+            free(*full_command);
             free(full_command);
         }
 
