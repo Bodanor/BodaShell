@@ -11,6 +11,7 @@ void switch_to_canonical(ENV_t *env)
    
     cfmakeraw(&env->newterm);
     tcsetattr(STDIN_FILENO, TCSANOW, &env->newterm);
+    setvbuf(stdout, NULL, _IONBF, 0);
 
 }
 
@@ -55,7 +56,7 @@ void get_cursor_pos(int *x, int *y)
     for (i -= 2, pow = 1; buf[i] != ';'; i--, pow *=10)
         *x = *x + (buf[i] - '0') *pow;
     for( i-- , pow = 1; buf[i] != '['; i--, pow *= 10)
-     *y = *y + ( buf[i] - '0' ) * pow;
+        *y = *y + ( buf[i] - '0' ) * pow;
 
  
     tcsetattr(STDIN_FILENO, TCSANOW, &restore);
