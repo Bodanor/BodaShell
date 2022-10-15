@@ -1,58 +1,129 @@
 #include "commands.h"
 #include "env.h"
+#include "history.h"
 #include "shell.h"
 #include <stdio.h>
 #include <stdlib.h>
 
-char *readCommandInput(void)
+static int check_special_key(char c, SHELL_HISTORY *history);
+static void remove_leftovers(int count);
+static void parse_history(SHELL_HISTORY *history, int x_begin, int y_begin);
+static int update_history (SHELL_HISTORY *history); 
+
+static void parse_history(SHELL_HISTORY *history, int x_begin, int y_begin)
+{
+    int x_current, y_current;
+    get_cursor_pos(&x_current, &y_current);
+
+    remove_leftovers(x_current - x_begin);
+        printf("%s", history->history_commands[history->current_index]);
+
+}
+void remove_leftovers(int count)
+{
+    int x;
+
+    for (x = count; x!= 0; x--)
+        printf("\b \b");
+}
+int check_special_key(char c, SHELL_HISTORY *history)
+{
+    if (c == '\033'){
+
+        /* Rearrange this code as the return statement is redundant */ 
+        getchar();
+        switch(getchar())
+        {
+            case 'A':
+                browse_history_up(history);
+                return 1;
+            case 'B':
+                browse_history_down(history);
+                return 1;
+            case 'C':
+                return 1;
+                break;
+            case 'D':
+                return 1;
+                break;
+        }
+    }
+    return 0;
+}
+
+
+char *readCommandInput(SHELL_HISTORY *history)
 {
     int i, step, c;
+    int y_beginning, x_beginning;
     char *buffer;
     char *buffer_pt;
 
-    buffer = NULL;
+    history->current_index = history->history_total_commands;
+    get_cursor_pos(&x_beginning, &y_beginning);
     i = 0; 
     step = 2;
 
-    buffer = (char*)malloc(sizeof(char)*INPUT_BUFFER_SIZE);
+    buffer = (char*)malloc(sizeof(char)*HISTORY_BUFF_SIZE);
     if (buffer == NULL){
         printf("Memory Error");
         return NULL;
     }
 
     buffer_pt = buffer;
+    *buffer_pt = '\0';
+    history->history_commands[history->history_total_commands] = buffer_pt;
 
-    while ((c = getchar()) != EOF && c != '\n'){
-        if ((i + 1)%INPUT_BUFFER_SIZE == 0){
-            
-            buffer = (char*)realloc(buffer, sizeof(char*)*INPUT_BUFFER_SIZE);
-            if (buffer == NULL){
-                printf("Memory Error");
-                return NULL;
-            }
-            buffer_pt = buffer + (i*(step -1));
-            step++;
-            i++;
+    while ((c = getchar()) != EOF && c != '\n' && c != '\r'){
+
+        if (check_special_key(c, history))
+        {
+                parse_history(history, x_beginning, y_beginning);
         }
-        buffer_pt[i++] = c;
+        else
+        {
+            if ((i + 1)%HISTORY_BUFF_SIZE == 0){
+                buffer = (char*)realloc(buffer, sizeof(char*)*HISTORY_BUFF_SIZE *step);
+                if (buffer == NULL){
+                    printf("Memory Error");
+                    return NULL;
+                }
+                buffer_pt = buffer+ (i*(step -1));
+                step++;
+                i = 0;
+            }
+            else{
+                buffer_pt[i++] = c;
+                buffer_pt[i] = '\0';
+                putchar(c);
+            }
+
+        }
     }
 
-    if (i != 0){
-        buffer_pt[i] = '\0';
 
-        buffer = (char*)realloc(buffer, strlen(buffer) + 1);
+    printf("\n\r");
+
+    if (history->current_index != history->history_total_commands){
+        buffer = realloc(buffer, sizeof(char) * (strlen(history->history_commands[history->current_index]) + 1));
         if (buffer == NULL){
-            printf("Memory Error");
+            perror("ERREUR DE REALLOC\n");
             return NULL;
         }
-        return buffer;
+        strcpy(buffer, history->history_commands[history->current_index]);
     }
-    else{
+    if (*buffer == '\0'){
         free(buffer);
         return NULL;
     }
-        
+    else{
+
+        history->history_commands[history->history_total_commands] = buffer;
+        return history->history_commands[history->history_total_commands++];
+    }
 }
+
+
 
 char **splitCommandInput(char *command)
 {
@@ -121,6 +192,7 @@ int cd_command(char **full_command, ENV_t *env)
 
 int exit_command(ENV_t *env)
 {
+    switch_to_non_canonical(env);
     destroy_shell(&env);
     return 0;
 }

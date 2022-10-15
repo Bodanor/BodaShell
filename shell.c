@@ -2,6 +2,30 @@
 #include "env.h"
 #include "utils.h"
 #include <stdio.h>
+#include <unistd.h>
+
+void switch_to_canonical(ENV_t *env)
+{
+    tcgetattr(STDIN_FILENO, &env->oldterm);
+    env->newterm = env->oldterm;
+   
+    cfmakeraw(&env->newterm);
+    tcsetattr(STDIN_FILENO, TCSANOW, &env->newterm);
+
+}
+
+void switch_to_non_canonical(ENV_t *env)
+{
+    tcsetattr(STDIN_FILENO, TCSANOW, &env->oldterm);
+}
+
+void get_cursor_pos(int *x, int *y)
+{
+    *x = *y = -1;
+    printf("\033[6n");
+    fflush(stdout);
+    scanf("\033[%d;%dR", y, x);
+}
 
 void show_prompt(ENV_t *env)
 {
@@ -34,6 +58,7 @@ int init_shell(ENV_t **env)
 {
     if (get_shell_owner(env) != 0)
         return -1;
+    switch_to_canonical(*env);
     return 0;
 
 }
