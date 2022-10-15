@@ -3,28 +3,33 @@
 #include "history.h"
 #include "shell.h"
 #include <stdio.h>
-#include <stdlib.h>
 
 static int check_special_key(char c, SHELL_HISTORY *history);
-static void remove_leftovers(int count);
+static void remove_leftovers(int x_begin, int y_begin);
 static void parse_history(SHELL_HISTORY *history, int x_begin, int y_begin);
 static void *update_history (SHELL_HISTORY *history); 
 
 static void parse_history(SHELL_HISTORY *history, int x_begin, int y_begin)
 {
-    int x_current, y_current;
-    get_cursor_pos(&x_current, &y_current);
-
-    remove_leftovers(x_current - x_begin);
-        printf("%s", history->history_commands[history->current_index]);
+    remove_leftovers(x_begin, y_begin);
+    printf("%s", history->history_commands[history->current_index]);
 
 }
-void remove_leftovers(int count)
+void remove_leftovers(int x_begin, int y_begin)
 {
-    int x;
+    int x_cur, y_cur;
 
-    for (x = count; x!= 0; x--)
-        printf("\b \b");
+    get_cursor_pos(&x_cur, &y_cur);
+
+    while (y_begin < y_cur)
+    {
+        printf("\033[%d;%dH", y_cur,0);
+        printf("\033[K");
+        y_cur--;
+    }
+
+    printf("\033[%d;%dH", y_begin,x_begin);
+    printf("\033[K");
 }
 int check_special_key(char c, SHELL_HISTORY *history)
 {
