@@ -35,9 +35,11 @@ int main(){
         command = readCommandInput(history);
         if (command != NULL){
             full_command = splitCommandInput(command);
-            status = shell_execute(full_command, env);
-            free(*full_command);
-            free(full_command);
+            if (*full_command != NULL){
+                status = shell_execute(full_command, env);
+                free(*full_command);
+                free(full_command);
+            }
         }
 
     }

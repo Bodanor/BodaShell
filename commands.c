@@ -59,6 +59,7 @@ char *readCommandInput(SHELL_HISTORY *history)
 
     char *buffer_tmp;
 
+    history->current_index = history->history_total_commands;
     get_cursor_pos(&x_beginning, &y_beginning);
     i = 0; 
     step = 2;
@@ -129,7 +130,6 @@ void *update_history(SHELL_HISTORY *history)
         free(history->history_commands[history->history_total_commands]);
         return NULL;
     }
-    history->current_index++;
     return history->history_commands[history->history_total_commands++];
 
 }
