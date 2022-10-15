@@ -21,10 +21,44 @@ void switch_to_non_canonical(ENV_t *env)
 
 void get_cursor_pos(int *x, int *y)
 {
-    *x = *y = -1;
-    printf("\033[6n");
-    fflush(stdout);
-    scanf("\033[%d;%dR", y, x);
+    char buf[30] = {0};
+    int ret, i, pow;
+    char ch;
+
+    *y = 0;
+    *x = 0;
+
+    struct termios term, restore;
+
+    tcgetattr(STDIN_FILENO, &term);
+    tcgetattr(STDIN_FILENO, &restore);
+    term.c_cflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &term);
+
+    write (1, "\033[6n", 4);
+
+    for (i = 0, ch = 0; ch != 'R'; i++)
+    {
+        ret = read(0, &ch, 1);
+        if (!ret){
+            tcsetattr(STDIN_FILENO, TCSANOW, &restore);
+            printf("Error");
+        }
+        buf[i] = ch;
+    }
+
+    if (i < 2){
+        tcsetattr(STDIN_FILENO, TCSANOW, &restore);
+        printf("Error");
+    }
+
+    for (i -= 2, pow = 1; buf[i] != ';'; i--, pow *=10)
+        *x = *x + (buf[i] - '0') *pow;
+    for( i-- , pow = 1; buf[i] != '['; i--, pow *= 10)
+     *y = *y + ( buf[i] - '0' ) * pow;
+
+ 
+    tcsetattr(STDIN_FILENO, TCSANOW, &restore);
 }
 
 void show_prompt(ENV_t *env)
