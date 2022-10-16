@@ -4,6 +4,8 @@
 #include "shell.h"
 #include "utils.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 static int check_arrow_key(SHELL_HISTORY *history);
 static void remove_leftovers(int x_begin, int y_begin);
@@ -36,12 +38,10 @@ int process_char(char c, SHELL_HISTORY *history, char *buffer_tmp, int *step, in
 
 }
 
-
-
 static void parse_history(SHELL_HISTORY *history, int x_begin, int y_begin)
 {
     remove_leftovers(x_begin, y_begin);
-    printf("%s", history->history_commands[history->current_index]);
+    printf("%s", history->history_commands[history->history_total_commands]);
 
 }
 void remove_leftovers(int x_begin, int y_begin)
@@ -89,6 +89,7 @@ char *readCommandInput(SHELL_HISTORY *history, ENV_t *env)
     int y_beginning, x_beginning;
 
     char *buffer_tmp = NULL;
+    char *orig_buffer = NULL;
 
     history->current_index = history->history_total_commands;
     get_cursor_pos(&x_beginning, &y_beginning);
@@ -112,9 +113,44 @@ char *readCommandInput(SHELL_HISTORY *history, ENV_t *env)
     while ((c = getchar()) != EOF && c != '\n' && c != '\r'){
 
         switch(c){
-            case '\033':
-                check_arrow_key(history);
-                parse_history(history, x_beginning, y_beginning);
+            case '\033': 
+                if (check_arrow_key(history)){
+                    if (history->current_index != history->history_total_commands){
+                        if (orig_buffer == NULL){
+                            orig_buffer = (char*)malloc(sizeof(char*)*(strlen(history->history_commands[history->history_total_commands])) + 1);
+                            if (orig_buffer == NULL){
+                                perror("BSH ERROR ");
+                                return NULL;
+                            }
+                            strcpy(orig_buffer, history->history_commands[history->history_total_commands]);
+                        }
+                        buffer_tmp = history->history_commands[history->history_total_commands];
+                        buffer_tmp = (char*)realloc(buffer_tmp, sizeof(char)*(strlen(history->history_commands[history->current_index]) + 1));
+                        if (buffer_tmp == NULL){
+                            perror("BSH ");
+                            return NULL;
+                        }
+                        strcpy(buffer_tmp, history->history_commands[history->current_index]);
+                        history->history_commands[history->history_total_commands] = buffer_tmp;
+
+                    }
+                    else{
+                        if (orig_buffer != NULL){
+                            buffer_tmp = history->history_commands[history->history_total_commands];
+
+                            buffer_tmp = (char*)realloc(buffer_tmp, sizeof(char) *(strlen(orig_buffer) + 1));
+                            if (buffer_tmp == NULL){
+                                perror("BSH ERROR ");
+                                return NULL;
+                            }
+                            strcpy(buffer_tmp, orig_buffer);
+                            history->history_commands[history->history_total_commands] = buffer_tmp;
+                        }
+
+                    }
+                    parse_history(history, x_beginning, y_beginning);
+                    i = strlen(history->history_commands[history->history_total_commands]);
+                }
                 break;
 
             case 127:
@@ -174,20 +210,7 @@ void delete_char(SHELL_HISTORY *history, int x_begin , int y_begin, int *i)
 
 void *update_history(SHELL_HISTORY *history)
 {
-    char *buffer_tmp = history->history_commands[history->history_total_commands];
-
-    if (history->current_index != history->history_total_commands){
-        buffer_tmp = realloc(buffer_tmp, sizeof(char) * (strlen(history->history_commands[history->current_index]) + 1));
-
-        if (buffer_tmp == NULL){
-            perror("ERREUR DE REALLOC\n");
-            return NULL;
-        }
-        strcpy(buffer_tmp, history->history_commands[history->current_index]);
-        history->history_commands[history->history_total_commands] = buffer_tmp;
-
-    }
-    else if (*history->history_commands[history->history_total_commands] == '\0'){
+    if (*history->history_commands[history->history_total_commands] == '\0'){
         free(history->history_commands[history->history_total_commands]);
         return NULL;
     }
