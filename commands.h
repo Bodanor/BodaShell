@@ -10,7 +10,7 @@
 #define INPUT_BUFFER_SIZE 512
 #define TOK_DELIMITER " \t\r\n\a"
 
-char *readCommandInput(SHELL_HISTORY *history);
+char *readCommandInput(SHELL_HISTORY *history, ENV_t *env);
 char **splitCommandInput(char *command);
 int cd_command(char **full_command, ENV_t *env);
 int exit_command(ENV_t *env);

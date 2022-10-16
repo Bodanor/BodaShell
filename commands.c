@@ -2,6 +2,7 @@
 #include "env.h"
 #include "history.h"
 #include "shell.h"
+#include "utils.h"
 #include <stdio.h>
 
 static int check_arrow_key(SHELL_HISTORY *history);
@@ -82,7 +83,7 @@ int check_arrow_key(SHELL_HISTORY *history)
 }
 
 
-char *readCommandInput(SHELL_HISTORY *history)
+char *readCommandInput(SHELL_HISTORY *history, ENV_t *env)
 {
     int i, step, c;
     int y_beginning, x_beginning;
@@ -118,6 +119,15 @@ char *readCommandInput(SHELL_HISTORY *history)
 
             case 127:
                 delete_char(history, x_beginning, y_beginning, &i);
+                break;
+
+            case 9:
+                if (getchar() == 9){
+                    tab_key_action(env);
+                }
+                show_prompt(env);
+                get_cursor_pos(&x_beginning, &y_beginning);
+                printf("%s", history->history_commands[history->history_total_commands]);
                 break;
 
             default:

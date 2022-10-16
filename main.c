@@ -32,7 +32,7 @@ int main(){
     while (status){
 
         show_prompt(env);
-        command = readCommandInput(history);
+        command = readCommandInput(history, env);
         if (command != NULL){
             full_command = splitCommandInput(command);
             if (*full_command != NULL){
