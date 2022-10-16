@@ -9,13 +9,15 @@
 
 static int check_arrow_key(SHELL_HISTORY *history);
 static void remove_leftovers(int x_begin, int y_begin);
-static void parse_history(SHELL_HISTORY *history, int x_begin, int y_begin);
+static int parse_history(SHELL_HISTORY *history, char **orig_buffer, int x_begin, int y_begin);
 static void *update_history (SHELL_HISTORY *history); 
 static void delete_char(SHELL_HISTORY *history, int x_begin , int y_begin, int *i);
 static int process_char(char c, SHELL_HISTORY *history, char *buffer_tmp, int *step, int *i);
 
 int process_char(char c, SHELL_HISTORY *history, char *buffer_tmp, int *step, int *i)
 {
+    /* If we press the up array and try to edit the line, we don't to a realloc perhaps checking variable i against srlen would
+     * be a solution. Anyway, every time we press up arrow and edit, we write outside of the array boundery */
 
     if ((*i + 1)%HISTORY_BUFF_SIZE == 0){
         buffer_tmp = (char*)realloc(history->history_commands[history->history_total_commands], sizeof(char*)*HISTORY_BUFF_SIZE * *step);
@@ -38,11 +40,48 @@ int process_char(char c, SHELL_HISTORY *history, char *buffer_tmp, int *step, in
 
 }
 
-static void parse_history(SHELL_HISTORY *history, int x_begin, int y_begin)
+static int parse_history(SHELL_HISTORY *history, char **orig_buffer, int x_begin, int y_begin)
 {
+    char *buffer_tmp = history->history_commands[history->history_total_commands];
+
+    if (history->current_index != history->history_total_commands){
+        if (*orig_buffer == NULL){
+            *orig_buffer = (char*)malloc(sizeof(char)*(strlen(buffer_tmp) + 1));
+            if (orig_buffer == NULL){
+                perror("BSH ERROR ");
+                return -1;
+            }
+            strcpy(*orig_buffer, buffer_tmp);
+        }
+
+        buffer_tmp = (char*)realloc(buffer_tmp, sizeof(char)*(strlen(history->history_commands[history->current_index]) + 1));
+        if (buffer_tmp == NULL){
+            perror("BSH ");
+            return -1;
+        }
+            
+        strcpy(buffer_tmp, history->history_commands[history->current_index]);
+        history->history_commands[history->history_total_commands] = buffer_tmp;
+    }
+    
+    else{
+        if (*orig_buffer != NULL){
+            buffer_tmp = (char*)realloc(buffer_tmp, sizeof(char) *(strlen(*orig_buffer) + 1));
+            if (buffer_tmp == NULL){
+                perror("BSH ERROR ");
+                return -1;
+            }
+            strcpy(buffer_tmp, *orig_buffer);
+            history->history_commands[history->history_total_commands] = buffer_tmp;
+            free(*orig_buffer);
+            *orig_buffer = NULL;
+        }
+
+    }
     remove_leftovers(x_begin, y_begin);
     printf("%s", history->history_commands[history->history_total_commands]);
 
+    return 0;
 }
 void remove_leftovers(int x_begin, int y_begin)
 {
@@ -115,40 +154,7 @@ char *readCommandInput(SHELL_HISTORY *history, ENV_t *env)
         switch(c){
             case '\033': 
                 if (check_arrow_key(history)){
-                    if (history->current_index != history->history_total_commands){
-                        if (orig_buffer == NULL){
-                            orig_buffer = (char*)malloc(sizeof(char*)*(strlen(history->history_commands[history->history_total_commands])) + 1);
-                            if (orig_buffer == NULL){
-                                perror("BSH ERROR ");
-                                return NULL;
-                            }
-                            strcpy(orig_buffer, history->history_commands[history->history_total_commands]);
-                        }
-                        buffer_tmp = history->history_commands[history->history_total_commands];
-                        buffer_tmp = (char*)realloc(buffer_tmp, sizeof(char)*(strlen(history->history_commands[history->current_index]) + 1));
-                        if (buffer_tmp == NULL){
-                            perror("BSH ");
-                            return NULL;
-                        }
-                        strcpy(buffer_tmp, history->history_commands[history->current_index]);
-                        history->history_commands[history->history_total_commands] = buffer_tmp;
-
-                    }
-                    else{
-                        if (orig_buffer != NULL){
-                            buffer_tmp = history->history_commands[history->history_total_commands];
-
-                            buffer_tmp = (char*)realloc(buffer_tmp, sizeof(char) *(strlen(orig_buffer) + 1));
-                            if (buffer_tmp == NULL){
-                                perror("BSH ERROR ");
-                                return NULL;
-                            }
-                            strcpy(buffer_tmp, orig_buffer);
-                            history->history_commands[history->history_total_commands] = buffer_tmp;
-                        }
-
-                    }
-                    parse_history(history, x_beginning, y_beginning);
+                    parse_history(history, &orig_buffer, x_beginning, y_beginning);
                     i = strlen(history->history_commands[history->history_total_commands]);
                 }
                 break;
@@ -179,7 +185,8 @@ char *readCommandInput(SHELL_HISTORY *history, ENV_t *env)
         }
         
     }
-
+    if (orig_buffer != NULL)
+        free(orig_buffer);
 
     printf("\n\r");
    
@@ -268,12 +275,13 @@ int cd_command(char **full_command, ENV_t *env)
 
     if (full_command[1] == NULL){
         if (chdir(env->home_dir) != 0){
-            printf("Failed to change to user home directory !\n");
+            printf("Failed to change to user home directory !\n\r");
         }
     }
     else
-        if (chdir(full_command[1])!= 0)
-                perror("SH : ");
+        if (chdir(full_command[1])!= 0){
+            fprintf(stderr, "BSH : %s\n\r", strerror(errno));
+        }
 
     if (getcwd(cwd, sizeof(cwd)) == NULL)
         perror("SH : ");
