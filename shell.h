@@ -2,6 +2,7 @@
 #define __SHELL_H
 #include <stdio.h>
 #include <termio.h>
+#include <ctype.h>
 
 #include "env.h"
 #include "commands.h"

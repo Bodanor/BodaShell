@@ -2,12 +2,12 @@
 #include "env.h"
 #include "history.h"
 #include "shell.h"
-#include <stdio.h>
 
 static int check_special_key(char c, SHELL_HISTORY *history);
 static void remove_leftovers(int x_begin, int y_begin);
 static void parse_history(SHELL_HISTORY *history, int x_begin, int y_begin);
 static void *update_history (SHELL_HISTORY *history); 
+static void delete_char(SHELL_HISTORY *history, int x_begin , int y_begin);
 
 static void parse_history(SHELL_HISTORY *history, int x_begin, int y_begin)
 {
@@ -34,7 +34,6 @@ void remove_leftovers(int x_begin, int y_begin)
 int check_special_key(char c, SHELL_HISTORY *history)
 {
     if (c == '\033'){
-
         /* Rearrange this code as the return statement is redundant */ 
         getchar();
         switch(getchar())
@@ -88,8 +87,11 @@ char *readCommandInput(SHELL_HISTORY *history)
         {
                 parse_history(history, x_beginning, y_beginning);
         }
-        else
-        {
+        else if (c == 127){
+            delete_char(history, x_beginning, y_beginning);
+        }
+        else if (!iscntrl(c)){
+
             if ((i + 1)%HISTORY_BUFF_SIZE == 0){
                 buffer_tmp = (char*)realloc(history->history_commands[history->history_total_commands], sizeof(char*)*HISTORY_BUFF_SIZE *step);
                 if (history->history_commands[history->history_total_commands] == NULL){
@@ -108,12 +110,36 @@ char *readCommandInput(SHELL_HISTORY *history)
             }
 
         }
+        else{
+
+        }
     }
 
 
     printf("\n\r");
    
     return update_history(history);
+}
+
+void delete_char(SHELL_HISTORY *history, int x_begin , int y_begin)
+{
+    int x_current, y_current;
+    struct winsize w;
+
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    get_cursor_pos(&x_current, &y_current);
+
+    if (x_current == 1 && y_current != y_begin){
+        printf("\033[%d;%dH", y_current -1, w.ws_col);
+        printf("\033[K");
+    }
+    else if (x_current != x_begin || y_current != y_begin)
+    {
+        printf("\033[%d;%dH", y_current,x_current -1);
+        printf("\033[K");
+
+    }
+
 }
 
 void *update_history(SHELL_HISTORY *history)
