@@ -9,6 +9,7 @@ char *trimStr (char *source, char *pattern)
 
     while (*tmp_src != '\0' && *tmp_pattern != '\0' && *tmp_src == *tmp_pattern){
         tmp_src++;
+        tmp_pattern++;
         
     }
     if (*tmp_src != '\0'){
