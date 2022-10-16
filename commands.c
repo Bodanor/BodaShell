@@ -20,7 +20,7 @@ int process_char(char c, SHELL_HISTORY *history, char *buffer_tmp, int *step, in
             printf("Memory Error");
             return -1;
         }
-
+        /*This is wrong, buffer_tmp is going to point somewhere else and thus cant be free anymore. Also pass a pointer to buffer in case it changes */
         history->history_commands[history->history_total_commands] = buffer_tmp+ (*i*(*step -1));
         (*step)++;
         *i = 0;
