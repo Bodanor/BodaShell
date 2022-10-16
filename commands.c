@@ -122,12 +122,17 @@ char *readCommandInput(SHELL_HISTORY *history, ENV_t *env)
                 break;
 
             case 9:
+                /* If we get here and dont send a tab key again, we lose one keystroke. This is a small issue
+                 * I need to the the while getchar to consume this lost keystroke
+                 * */
+
                 if (getchar() == 9){
                     tab_key_action(env);
+                    show_prompt(env);
+                    get_cursor_pos(&x_beginning, &y_beginning);
+                    printf("%s", history->history_commands[history->current_index]);
+
                 }
-                show_prompt(env);
-                get_cursor_pos(&x_beginning, &y_beginning);
-                printf("%s", history->history_commands[history->history_total_commands]);
                 break;
 
             default:
